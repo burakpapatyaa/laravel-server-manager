@@ -53,23 +53,23 @@ readonly LSM_VERSION="1.0.0"
 # ============================================================================
 
 print_success() {
-    echo -e "${GREEN}  ✅ $1${NC}"
+    echo -e "${GREEN}  [✓] $1${NC}"
 }
 
 print_error() {
-    echo -e "${RED}  ❌ $1${NC}"
+    echo -e "${RED}  [✗] $1${NC}"
 }
 
 print_warning() {
-    echo -e "${YELLOW}  ⚠️  $1${NC}"
+    echo -e "${YELLOW}  [!] $1${NC}"
 }
 
 print_info() {
-    echo -e "${CYAN}  ℹ️  $1${NC}"
+    echo -e "${CYAN}  [i] $1${NC}"
 }
 
 print_step() {
-    echo -e "${BLUE}  ➤ $1${NC}"
+    echo -e "${BLUE}  [➤] $1${NC}"
 }
 
 print_debug() {
@@ -127,14 +127,14 @@ print_table_row() {
 print_banner() {
     local active_project="${APP_NAME:-Yapılandırılmadı}"
     local server_ip="${SERVER_IP:-Bilinmiyor}"
+    local width=58
 
-    echo -e "${CYAN}"
-    echo "  ╔══════════════════════════════════════════════════════════╗"
-    echo -e "  ║  ${BOLD}${WHITE}🚀 Laravel Server Manager${NC}${CYAN}              ${DIM}v${LSM_VERSION}${NC}${CYAN}         ║"
-    echo "  ╠══════════════════════════════════════════════════════════╣"
-    echo -e "  ║  ${GREEN}Aktif Proje:${NC} ${BOLD}${YELLOW}${active_project}${NC}$(printf '%*s' $((37 - ${#active_project})) '')${CYAN}║"
-    echo -e "  ║  ${GREEN}Sunucu IP  :${NC} ${WHITE}${server_ip}${NC}$(printf '%*s' $((37 - ${#server_ip})) '')${CYAN}║"
-    echo -e "  ╚══════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}  ╔$(printf '═%.0s' $(seq 1 $width))╗${NC}"
+    echo -e "${CYAN}  ║  ${BOLD}${WHITE}$(printf '%-30s' "Laravel Server Manager")${NC}${CYAN} ${DIM}$(printf '%23s' "v${LSM_VERSION}")${NC}${CYAN}  ║${NC}"
+    echo -e "${CYAN}  ╠$(printf '═%.0s' $(seq 1 $width))╣${NC}"
+    echo -e "${CYAN}  ║  ${GREEN}Aktif Proje:${NC} ${BOLD}${YELLOW}$(printf '%-41s' "${active_project:0:41}")${NC}${CYAN}  ║${NC}"
+    echo -e "${CYAN}  ║  ${GREEN}Sunucu IP  :${NC} ${WHITE}$(printf '%-41s' "${server_ip:0:41}")${NC}${CYAN}  ║${NC}"
+    echo -e "${CYAN}  ╚$(printf '═%.0s' $(seq 1 $width))╝${NC}"
     echo ""
 }
 
@@ -297,8 +297,15 @@ read_menu_choice() {
     local prompt="${1:-Seçiminiz}"
     local result=""
 
-    echo -ne "\n  ${BOLD}${CYAN}${prompt}${NC}${CYAN} ➤ ${NC}"
-    read -r result
+    echo -ne "\n  ${BOLD}${CYAN}${prompt}${NC}${CYAN} ➤ ${NC}" >&2
+    if ! read -r result; then
+        echo "q"
+        return 0
+    fi
+    # Boşlukları ve carriage return'ü temizle
+    result="${result#"${result%%[![:space:]]*}"}"
+    result="${result%"${result##*[![:space:]]}"}"
+    result="${result//$'\r'/}"
     echo "$result"
 }
 

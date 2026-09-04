@@ -57,30 +57,30 @@ show_menu() {
     echo ""
     echo -e "  ${BOLD}${WHITE}  Menü${NC}"
     echo ""
-    echo -e "  ${CYAN} 0)${NC}  📊  Sistem Durumu"
-    echo -e "  ${CYAN} 1)${NC}  🚀  Deploy / Güncelleme"
-    echo -e "  ${CYAN} 2)${NC}  ⚙️   Ayarları Yönet / Değiştir"
+    echo -e "  ${CYAN} 0)${NC}  Sistem Durumu"
+    echo -e "  ${CYAN} 1)${NC}  Deploy / Güncelleme"
+    echo -e "  ${CYAN} 2)${NC}  Ayarları Yönet / Değiştir"
     echo ""
-    echo -e "  ${CYAN} 3)${NC}  🔄  Servisleri Yeniden Başlat"
-    echo -e "  ${CYAN} 4)${NC}  📁  Dosya İzinlerini Düzelt"
-    echo -e "  ${CYAN} 5)${NC}  🧹  Laravel Cache Temizle / Yenile"
-    echo -e "  ${CYAN} 6)${NC}  🔗  Storage Symlink Onar"
-    echo -e "  ${CYAN} 7)${NC}  👷  Queue Worker Yönetimi"
-    echo -e "  ${CYAN} 8)${NC}  ❌  Başarısız Job'ları Yönet"
+    echo -e "  ${CYAN} 3)${NC}  Servisleri Yeniden Başlat"
+    echo -e "  ${CYAN} 4)${NC}  Dosya İzinlerini Düzelt"
+    echo -e "  ${CYAN} 5)${NC}  Laravel Cache Temizle / Yenile"
+    echo -e "  ${CYAN} 6)${NC}  Storage Symlink Onar"
+    echo -e "  ${CYAN} 7)${NC}  Queue Worker Yönetimi"
+    echo -e "  ${CYAN} 8)${NC}  Başarısız Job'ları Yönet"
     echo ""
-    echo -e "  ${CYAN} 9)${NC}  💾  Disk Alanını Temizle"
-    echo -e "  ${CYAN}10)${NC}  📦  Veritabanı Yedeği Al"
-    echo -e "  ${CYAN}11)${NC}  📥  Yedekten Geri Yükle"
+    echo -e "  ${CYAN} 9)${NC}  Disk Alanını Temizle"
+    echo -e "  ${CYAN}10)${NC}  Veritabanı Yedeği Al"
+    echo -e "  ${CYAN}11)${NC}  Yedekten Geri Yükle"
     echo ""
-    echo -e "  ${CYAN}12)${NC}  🔒  SSL Kurulumu (Let's Encrypt)"
-    echo -e "  ${CYAN}13)${NC}  🛡️   IP Engelle / Güvenlik Duvarı"
-    echo -e "  ${CYAN}14)${NC}  🔐  Güvenlik Taraması"
+    echo -e "  ${CYAN}12)${NC}  SSL Kurulumu (Let's Encrypt)"
+    echo -e "  ${CYAN}13)${NC}  IP Engelle / Güvenlik Duvarı"
+    echo -e "  ${CYAN}14)${NC}  Güvenlik Taraması"
     echo ""
-    echo -e "  ${CYAN}15)${NC}  🔌  MySQL Bağlantı Yönetimi"
-    echo -e "  ${CYAN}16)${NC}  🌐  Nginx Yönetimi"
-    echo -e "  ${CYAN}17)${NC}  🕐  Session Yönetimi"
+    echo -e "  ${CYAN}15)${NC}  MySQL Bağlantı Yönetimi"
+    echo -e "  ${CYAN}16)${NC}  Nginx Yönetimi"
+    echo -e "  ${CYAN}17)${NC}  Session Yönetimi"
     echo ""
-    echo -e "  ${YELLOW} q)${NC}  🚪  Çıkış"
+    echo -e "  ${YELLOW} q)${NC}  Çıkış"
     echo ""
 }
 
@@ -110,15 +110,17 @@ execute_choice() {
         q|Q)
             echo ""
             print_info "Laravel Server Manager kapatılıyor..."
-            echo -e "  ${GRAY}İyi çalışmalar! 👋${NC}"
+            echo -e "  ${GRAY}İyi çalışmalar!${NC}"
             echo ""
             exit 0
             ;;
         *)
             print_warning "Geçersiz seçim! Lütfen menüden bir seçenek girin."
             sleep 1
+            return 1
             ;;
     esac
+    return 0
 }
 
 # ============================================================================
@@ -130,11 +132,15 @@ main() {
         show_menu
         local choice
         choice=$(read_menu_choice)
-        execute_choice "$choice"
 
-        # İşlemden sonra menüye dön
-        if [[ "$choice" != "q" && "$choice" != "Q" ]]; then
-            press_enter_to_continue
+        # Boş girildiyse menüyü yenile
+        [[ -z "$choice" ]] && continue
+
+        if execute_choice "$choice"; then
+            # Başarılı işlemden sonra menüye dön
+            if [[ "$choice" != "q" && "$choice" != "Q" ]]; then
+                press_enter_to_continue
+            fi
         fi
     done
 }
