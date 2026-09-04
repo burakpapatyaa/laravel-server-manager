@@ -432,10 +432,10 @@ check_service_status() {
         return 0
     elif systemctl is-enabled --quiet "$service" 2>/dev/null; then
         echo -e "${YELLOW}○ Durdurulmuş${NC}"
-        return 1
+        return 0
     else
         echo -e "${RED}✗ Kurulu Değil${NC}"
-        return 2
+        return 0
     fi
 }
 

@@ -137,10 +137,12 @@ main() {
         [[ -z "$choice" ]] && continue
 
         if execute_choice "$choice"; then
-            # Başarılı işlemden sonra menüye dön
-            if [[ "$choice" != "q" && "$choice" != "Q" ]]; then
-                press_enter_to_continue
-            fi
+            # Sadece tek seferlik (sub-menüsü olmayan) işlemlerden sonra Enter bekle
+            case "$choice" in
+                0|1|4|6|14)
+                    press_enter_to_continue
+                    ;;
+            esac
         fi
     done
 }

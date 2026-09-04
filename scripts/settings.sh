@@ -264,7 +264,7 @@ main() {
         local choice
         choice=$(read_menu_choice)
 
-        if [[ "$choice" == "0" ]]; then
+        if [[ "$choice" == "0" || "$choice" == "q" || "$choice" == "Q" ]]; then
             break
         fi
 
