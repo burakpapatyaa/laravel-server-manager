@@ -316,12 +316,33 @@ install_nginx() {
 
     try_run "Nginx kuruluyor" "apt-get install -y nginx"
     try_run "Nginx başlatılıyor" "systemctl enable nginx && systemctl start nginx"
+    print_success "Nginx servisi kuruldu."
+}
 
-    # Laravel Nginx konfigürasyonu oluştur
+# Supervisor kurulumu
+install_supervisor() {
+    print_header "👷 Supervisor Kuruluyor"
+
+    try_run "Supervisor kuruluyor" "apt-get install -y supervisor"
+    try_run "Supervisor başlatılıyor" "systemctl enable supervisor && systemctl start supervisor"
+    print_success "Supervisor servisi kuruldu."
+}
+
+# Laravel Nginx Vhost konfigürasyonu (Proje klonlandıktan sonra çağrılır)
+configure_nginx_vhost() {
+    print_header "🌐 Nginx Vhost Yapılandırılıyor"
     print_step "Nginx konfigürasyonu oluşturuluyor..."
 
     local server_name="${DOMAIN:-${SERVER_IP}}"
     local nginx_conf="/etc/nginx/sites-available/${APP_NAME}"
+
+    # Eski veya bozuk fastcgi_param satırlarını onar
+    for conf in /etc/nginx/sites-available/*; do
+        [[ -f "$conf" ]] || continue
+        if grep -q "fastcgi_param[[:space:]]*SCRIPT_FILENAME" "$conf" 2>/dev/null; then
+            sed -i 's|fastcgi_param[[:space:]]*SCRIPT_FILENAME.*;|fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;|' "$conf" 2>/dev/null || true
+        fi
+    done
 
     cat > "$nginx_conf" << NGINX
 server {
@@ -373,23 +394,26 @@ NGINX
     rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
     # Nginx config testi
-    if nginx -t 2>/dev/null; then
+    local test_output
+    test_output=$(nginx -t 2>&1)
+    if echo "$test_output" | grep -q "successful"; then
         try_run "Nginx yeniden başlatılıyor" "systemctl reload nginx"
         print_success "Nginx konfigürasyonu oluşturuldu ve etkinleştirildi."
     else
-        print_error "Nginx konfigürasyon hatası! Lütfen kontrol edin."
+        print_warning "Nginx konfigürasyonunda hata tespit edildi:"
+        echo "$test_output" | while read -r line; do echo "  $line"; done
     fi
 }
 
-# Supervisor kurulumu
-install_supervisor() {
-    print_header "👷 Supervisor Kuruluyor"
-
-    try_run "Supervisor kuruluyor" "apt-get install -y supervisor"
-    try_run "Supervisor başlatılıyor" "systemctl enable supervisor && systemctl start supervisor"
-
-    # Laravel Queue Worker konfigürasyonu
+# Laravel Supervisor Worker konfigürasyonu (Proje klonlandıktan sonra çağrılır)
+configure_supervisor_worker() {
+    print_header "👷 Supervisor Worker Yapılandırılıyor"
     print_step "Supervisor konfigürasyonu oluşturuluyor..."
+
+    # Logs dizini ve log dosyasını önceden hazırla
+    mkdir -p "${APP_DIR}/storage/logs" 2>/dev/null || true
+    touch "${APP_DIR}/storage/logs/worker.log" 2>/dev/null || true
+    chown -R www-data:www-data "${APP_DIR}/storage" 2>/dev/null || true
 
     local supervisor_conf="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
 
@@ -408,9 +432,13 @@ stdout_logfile=${APP_DIR}/storage/logs/worker.log
 stopwaitsecs=3600
 SUPERVISOR
 
-    try_run "Supervisor konfigürasyonu yükleniyor" "supervisorctl reread && supervisorctl update"
-
-    print_success "Supervisor konfigürasyonu oluşturuldu."
+    print_step "Supervisor konfigürasyonu yükleniyor..."
+    supervisorctl reread > /dev/null 2>&1 || true
+    if supervisorctl update > /dev/null 2>&1; then
+        print_success "Supervisor worker'ları başarıyla başlatıldı."
+    else
+        print_warning "Supervisor worker henüz başlatılamadı (Queue bağlantısı hazır olduğunda otomatik çalışacaktır)."
+    fi
 }
 
 # Certbot (Let's Encrypt) kurulumu
@@ -622,9 +650,13 @@ main() {
     install_certbot
     configure_firewall
 
-    # Proje kurulumu
+    # Proje kurulumu (Önce repo klonlanır ve Laravel yapılandırılır)
     clone_repository
     configure_laravel
+
+    # Proje hazır olduktan sonra Nginx Vhost ve Supervisor Worker yapılandırılır
+    configure_nginx_vhost
+    configure_supervisor_worker
 
     # Logs dizinini oluştur
     mkdir -p "${SCRIPT_DIR}/../logs"
