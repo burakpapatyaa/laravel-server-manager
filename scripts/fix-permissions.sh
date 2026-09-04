@@ -38,22 +38,39 @@ main() {
 
     echo ""
 
-    # Sahiplik
-    try_run "Sahiplik ayarlanıyor (www-data:www-data)" "chown -R www-data:www-data ${APP_DIR}"
+    # Deploy kullanıcısını belirle (sudo çalıştıran asıl kullanıcı veya dizin sahibi)
+    local deploy_user="${SUDO_USER:-$USER}"
+    if [[ "$deploy_user" == "root" || -z "$deploy_user" ]]; then
+        deploy_user=$(stat -c '%U' "$SCRIPT_DIR" 2>/dev/null || echo "")
+        if [[ -z "$deploy_user" || "$deploy_user" == "root" ]]; then
+            deploy_user=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd || echo "www-data")
+        fi
+    fi
 
-    # Dosya izinleri: 644
-    try_run "Dosya izinleri ayarlanıyor (644)" "find ${APP_DIR} -type f -exec chmod 644 {} \\;"
+    # Kullanıcıyı www-data grubuna ekle
+    if [[ "$deploy_user" != "www-data" && "$deploy_user" != "root" ]]; then
+        usermod -aG www-data "$deploy_user" 2>/dev/null || true
+    fi
 
-    # Dizin izinleri: 755
-    try_run "Dizin izinleri ayarlanıyor (755)" "find ${APP_DIR} -type d -exec chmod 755 {} \\;"
+    # Sahiplik: deploy_user:www-data
+    try_run "Sahiplik ayarlanıyor (${deploy_user}:www-data)" "chown -R ${deploy_user}:www-data ${APP_DIR}"
+
+    # Dizin izinleri: 775 (Sahip ve www-data grubu yazabilir)
+    try_run "Dizin izinleri ayarlanıyor (775)" "find ${APP_DIR} -type d -exec chmod 775 {} \\;"
+
+    # Dosya izinleri: 664 (Sahip ve www-data grubu yazabilir)
+    try_run "Dosya izinleri ayarlanıyor (664)" "find ${APP_DIR} -type f -exec chmod 664 {} \\;"
+
+    # SGID biti: Yeni oluşturulacak tüm dosya/klasörler otomatik www-data grubuna ait olur
+    try_run "SGID ayarlanıyor (yeni dosyalar www-data grubunu miras alır)" "chmod -R g+s ${APP_DIR}"
 
     # Storage ve bootstrap/cache: 775
     try_run "storage/ izinleri ayarlanıyor (775)" "chmod -R 775 ${APP_DIR}/storage"
     try_run "bootstrap/cache/ izinleri ayarlanıyor (775)" "chmod -R 775 ${APP_DIR}/bootstrap/cache"
 
-    # .env: 640
+    # .env: 660 (Sahip ve www-data okur/yazar, diğerleri okuyamaz)
     if [[ -f "${APP_DIR}/.env" ]]; then
-        try_run ".env izinleri ayarlanıyor (640)" "chmod 640 ${APP_DIR}/.env"
+        try_run ".env izinleri ayarlanıyor (660)" "chmod 660 ${APP_DIR}/.env"
     fi
 
     # Artisan çalıştırılabilir

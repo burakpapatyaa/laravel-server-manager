@@ -593,13 +593,27 @@ configure_laravel() {
 
     # Dosya izinleri
     print_step "Dosya izinleri ayarlanıyor..."
-    chown -R www-data:www-data "$APP_DIR"
-    find "$APP_DIR" -type f -exec chmod 644 {} \;
-    find "$APP_DIR" -type d -exec chmod 755 {} \;
-    chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
-    chmod 640 "$APP_DIR/.env"
+    local deploy_user="${SUDO_USER:-$USER}"
+    if [[ "$deploy_user" == "root" || -z "$deploy_user" ]]; then
+        deploy_user=$(stat -c '%U' "$SCRIPT_DIR" 2>/dev/null || echo "")
+        if [[ -z "$deploy_user" || "$deploy_user" == "root" ]]; then
+            deploy_user=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd || echo "www-data")
+        fi
+    fi
 
-    print_success "Laravel yapılandırması tamamlandı!"
+    if [[ "$deploy_user" != "www-data" && "$deploy_user" != "root" ]]; then
+        usermod -aG www-data "$deploy_user" 2>/dev/null || true
+    fi
+
+    chown -R "${deploy_user}:www-data" "$APP_DIR"
+    find "$APP_DIR" -type f -exec chmod 664 {} \;
+    find "$APP_DIR" -type d -exec chmod 775 {} \;
+    chmod -R g+s "$APP_DIR"
+    chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+    chmod 660 "$APP_DIR/.env"
+    [[ -f "$APP_DIR/artisan" ]] && chmod +x "$APP_DIR/artisan"
+
+    print_success "Laravel yapılandırması tamamlandı! (${deploy_user}:www-data)"
 
     cd - > /dev/null
 }
