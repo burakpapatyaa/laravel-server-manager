@@ -138,7 +138,13 @@ build_assets() {
         if command -v npm &> /dev/null; then
             try_run_verbose "NPM bağımlılıkları yükleniyor" "npm install --no-audit 2>&1"
             [[ -d "${APP_DIR}/node_modules/.bin" ]] && chmod -R +x "${APP_DIR}/node_modules/.bin" 2>/dev/null || true
-            try_run_verbose "Asset'ler derleniyor (npm run build)" "npm run build 2>&1"
+
+            if ! try_run_verbose "Asset'ler derleniyor (npm run build)" "npm run build 2>&1"; then
+                print_warning "Vite build izin/çalıştırma hatası verdi! node_modules temizlenip yeniden kuruluyor..."
+                rm -rf "${APP_DIR}/node_modules"
+                npm install --no-audit 2>&1
+                try_run_verbose "Asset'ler tekrar derleniyor (npm run build)" "npm run build 2>&1"
+            fi
         else
             print_error "NPM kurulamadı. Asset derleme atlandı."
         fi
@@ -184,14 +190,13 @@ fix_permissions() {
     fi
 
     chown -R "${deploy_user}:www-data" "$APP_DIR"
-    find "$APP_DIR" -type f -exec chmod 664 {} \;
-    find "$APP_DIR" -type d -exec chmod 775 {} \;
+    # node_modules ve .git dizinlerini chmod 664/775 dışında tut (binary ve git yetkilerini koru)
+    find "$APP_DIR" -name "node_modules" -prune -o -name ".git" -prune -o -type f -exec chmod 664 {} +
+    find "$APP_DIR" -name "node_modules" -prune -o -name ".git" -prune -o -type d -exec chmod 775 {} +
     chmod -R g+s "$APP_DIR"
     chmod -R 775 "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
     chmod 660 "${APP_DIR}/.env" 2>/dev/null || true
     [[ -f "${APP_DIR}/artisan" ]] && chmod +x "${APP_DIR}/artisan"
-    [[ -d "${APP_DIR}/node_modules/.bin" ]] && chmod -R +x "${APP_DIR}/node_modules/.bin" 2>/dev/null || true
-    [[ -d "${APP_DIR}/vendor/bin" ]] && chmod -R +x "${APP_DIR}/vendor/bin" 2>/dev/null || true
 
     print_success "Dosya izinleri düzeltildi (${deploy_user}:www-data)."
 }

@@ -606,8 +606,8 @@ configure_laravel() {
     fi
 
     chown -R "${deploy_user}:www-data" "$APP_DIR"
-    find "$APP_DIR" -type f -exec chmod 664 {} \;
-    find "$APP_DIR" -type d -exec chmod 775 {} \;
+    find "$APP_DIR" -name "node_modules" -prune -o -name ".git" -prune -o -type f -exec chmod 664 {} +
+    find "$APP_DIR" -name "node_modules" -prune -o -name ".git" -prune -o -type d -exec chmod 775 {} +
     chmod -R g+s "$APP_DIR"
     chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
     chmod 660 "$APP_DIR/.env"

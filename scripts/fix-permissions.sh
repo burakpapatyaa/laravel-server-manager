@@ -55,11 +55,11 @@ main() {
     # Sahiplik: deploy_user:www-data
     try_run "Sahiplik ayarlanıyor (${deploy_user}:www-data)" "chown -R ${deploy_user}:www-data ${APP_DIR}"
 
-    # Dizin izinleri: 775 (Sahip ve www-data grubu yazabilir)
-    try_run "Dizin izinleri ayarlanıyor (775)" "find ${APP_DIR} -type d -exec chmod 775 {} \\;"
+    # Dizin izinleri: 775 (node_modules ve .git korunur)
+    try_run "Dizin izinleri ayarlanıyor (775)" "find ${APP_DIR} -name node_modules -prune -o -name .git -prune -o -type d -exec chmod 775 {} +"
 
-    # Dosya izinleri: 664 (Sahip ve www-data grubu yazabilir)
-    try_run "Dosya izinleri ayarlanıyor (664)" "find ${APP_DIR} -type f -exec chmod 664 {} \\;"
+    # Dosya izinleri: 664 (node_modules ve .git korunur)
+    try_run "Dosya izinleri ayarlanıyor (664)" "find ${APP_DIR} -name node_modules -prune -o -name .git -prune -o -type f -exec chmod 664 {} +"
 
     # SGID biti: Yeni oluşturulacak tüm dosya/klasörler otomatik www-data grubuna ait olur
     try_run "SGID ayarlanıyor (yeni dosyalar www-data grubunu miras alır)" "chmod -R g+s ${APP_DIR}"
