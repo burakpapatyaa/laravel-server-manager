@@ -294,6 +294,33 @@ install_composer() {
     fi
 }
 
+# Node.js ve NPM kurulumu
+install_nodejs() {
+    print_header "🟢 Node.js ve NPM Kuruluyor"
+
+    if command -v node &> /dev/null && command -v npm &> /dev/null; then
+        local node_ver
+        node_ver=$(node -v 2>/dev/null || echo "")
+        local npm_ver
+        npm_ver=$(npm -v 2>/dev/null || echo "")
+        print_info "Node.js (${node_ver}) ve NPM (${npm_ver}) zaten kurulu."
+        return 0
+    fi
+
+    print_step "NodeSource Node.js 20 LTS deposu yapılandırılıyor..."
+    if curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1; then
+        try_run "Node.js ve NPM kuruluyor (NodeSource LTS)" "apt-get install -y nodejs"
+    else
+        try_run "Standart Node.js ve NPM kuruluyor" "apt-get install -y nodejs npm"
+    fi
+
+    local node_ver
+    node_ver=$(node -v 2>/dev/null || echo "Bilinmiyor")
+    local npm_ver
+    npm_ver=$(npm -v 2>/dev/null || echo "Bilinmiyor")
+    print_success "Node.js (${node_ver}) ve NPM (${npm_ver}) başarıyla kuruldu!"
+}
+
 # MySQL kurulumu
 install_mysql() {
     print_header "🗄️ MySQL Kuruluyor"
@@ -658,6 +685,7 @@ main() {
     # Paket kurulumları
     install_php
     install_composer
+    install_nodejs
     install_mysql
     install_nginx
     install_supervisor

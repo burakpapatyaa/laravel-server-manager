@@ -120,11 +120,23 @@ build_assets() {
         print_subheader "Front-end Asset Derleme (Vite)"
         cd "$APP_DIR"
 
+        if ! command -v npm &> /dev/null; then
+            print_warning "NPM bulunamadı! Node.js ve NPM kuruluyor..."
+            local sudo_cmd=""
+            [[ $EUID -ne 0 ]] && sudo_cmd="sudo"
+            if curl -fsSL https://deb.nodesource.com/setup_20.x | $sudo_cmd bash - > /dev/null 2>&1; then
+                $sudo_cmd apt-get install -y nodejs > /dev/null 2>&1 || true
+            else
+                $sudo_cmd apt-get update -y > /dev/null 2>&1 || true
+                $sudo_cmd apt-get install -y nodejs npm > /dev/null 2>&1 || true
+            fi
+        fi
+
         if command -v npm &> /dev/null; then
             try_run_verbose "NPM bağımlılıkları yükleniyor" "npm install --no-audit 2>&1"
             try_run_verbose "Asset'ler derleniyor (npm run build)" "npm run build 2>&1"
         else
-            print_warning "NPM bulunamadı. Asset derleme atlandı (Gerekirse 'sudo apt install nodejs npm' kurun)."
+            print_error "NPM kurulamadı. Asset derleme atlandı."
         fi
         cd - > /dev/null
     fi

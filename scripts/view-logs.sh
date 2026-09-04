@@ -103,11 +103,14 @@ check_vite_assets() {
             echo ""
             if confirm_action "npm install ve npm run build çalıştırmak istiyor musunuz?" "e"; then
                 if ! command -v npm &>/dev/null; then
-                    print_step "Node.js ve NPM kuruluyor..."
-                    if [[ $EUID -ne 0 ]]; then
-                        sudo apt-get update -y && sudo apt-get install -y nodejs npm
+                    print_step "Node.js 20 LTS ve NPM kuruluyor..."
+                    local sudo_cmd=""
+                    [[ $EUID -ne 0 ]] && sudo_cmd="sudo"
+                    if curl -fsSL https://deb.nodesource.com/setup_20.x | $sudo_cmd bash - > /dev/null 2>&1; then
+                        $sudo_cmd apt-get install -y nodejs > /dev/null 2>&1 || true
                     else
-                        apt-get update -y && apt-get install -y nodejs npm
+                        $sudo_cmd apt-get update -y > /dev/null 2>&1 || true
+                        $sudo_cmd apt-get install -y nodejs npm > /dev/null 2>&1 || true
                     fi
                 fi
                 
