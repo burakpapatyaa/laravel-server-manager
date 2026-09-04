@@ -16,19 +16,19 @@
 # Script dizini
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# common.sh henüz config olmadan da çalışabilmeli
-source "${SCRIPT_DIR}/common.sh" 2>/dev/null || true
-
-# Renk tanımları (common.sh yüklenemezse yedek)
-RED="${RED:-\033[0;31m}"
-GREEN="${GREEN:-\033[0;32m}"
-YELLOW="${YELLOW:-\033[1;33m}"
-BLUE="${BLUE:-\033[0;34m}"
-CYAN="${CYAN:-\033[0;36m}"
-WHITE="${WHITE:-\033[1;37m}"
-BOLD="${BOLD:-\033[1m}"
-DIM="${DIM:-\033[2m}"
-NC="${NC:-\033[0m}"
+# common.sh yükle — config olmadan da çalışabilmeli
+if ! source "${SCRIPT_DIR}/common.sh" 2>/dev/null; then
+    # common.sh yüklenemezse yedek renk tanımları
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    WHITE='\033[1;37m'
+    BOLD='\033[1m'
+    DIM='\033[2m'
+    NC='\033[0m'
+fi
 
 # ============================================================================
 # FONKSİYONLAR

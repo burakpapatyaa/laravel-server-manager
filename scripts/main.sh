@@ -8,6 +8,20 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
+# Config kontrolü — yoksa kuruluma yönlendir
+if ! check_config; then
+    echo ""
+    print_warning "Config dosyası bulunamadı!"
+    print_info "İlk kurulum henüz yapılmamış. Kurulum sihirbazı başlatılıyor..."
+    echo ""
+    if confirm_action "Kurulum sihirbazını başlatmak istiyor musunuz?"; then
+        exec sudo bash "${SCRIPT_DIR}/install.sh"
+    else
+        print_info "Manuel kurulum için: ${BOLD}sudo bash ${SCRIPT_DIR}/install.sh${NC}"
+        exit 0
+    fi
+fi
+
 # Config yükle
 load_config
 
