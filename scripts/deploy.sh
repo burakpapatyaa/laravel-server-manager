@@ -55,6 +55,9 @@ pull_latest_code() {
 
     cd "$APP_DIR"
 
+    # Git safe.directory ekle (dubious ownership önleme)
+    git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
     # Remote URL'yi güncelle (token değişmiş olabilir)
     local repo_url
     if [[ "$REPO_VISIBILITY" == "private" && -n "$GITHUB_TOKEN" ]]; then

@@ -347,6 +347,13 @@ load_config() {
     # shellcheck source=/dev/null
     source "$CONFIG_FILE"
     print_debug "Config yüklendi: ${CONFIG_FILE}"
+
+    # Git safe.directory kontrolü (dubious ownership hatasını önler)
+    if command -v git &>/dev/null && [[ -n "${APP_DIR:-}" && -d "${APP_DIR:-}" ]]; then
+        if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "$APP_DIR"; then
+            git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+        fi
+    fi
 }
 
 # Config dosyasının varlığını kontrol et
