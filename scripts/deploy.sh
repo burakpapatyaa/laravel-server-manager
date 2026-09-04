@@ -137,6 +137,7 @@ build_assets() {
 
         if command -v npm &> /dev/null; then
             try_run_verbose "NPM bağımlılıkları yükleniyor" "npm install --no-audit 2>&1"
+            [[ -d "${APP_DIR}/node_modules/.bin" ]] && chmod -R +x "${APP_DIR}/node_modules/.bin" 2>/dev/null || true
             try_run_verbose "Asset'ler derleniyor (npm run build)" "npm run build 2>&1"
         else
             print_error "NPM kurulamadı. Asset derleme atlandı."
@@ -189,6 +190,8 @@ fix_permissions() {
     chmod -R 775 "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache"
     chmod 660 "${APP_DIR}/.env" 2>/dev/null || true
     [[ -f "${APP_DIR}/artisan" ]] && chmod +x "${APP_DIR}/artisan"
+    [[ -d "${APP_DIR}/node_modules/.bin" ]] && chmod -R +x "${APP_DIR}/node_modules/.bin" 2>/dev/null || true
+    [[ -d "${APP_DIR}/vendor/bin" ]] && chmod -R +x "${APP_DIR}/vendor/bin" 2>/dev/null || true
 
     print_success "Dosya izinleri düzeltildi (${deploy_user}:www-data)."
 }

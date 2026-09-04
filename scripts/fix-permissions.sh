@@ -78,6 +78,14 @@ main() {
         try_run "artisan çalıştırılabilir yapılıyor" "chmod +x ${APP_DIR}/artisan"
     fi
 
+    # Node_modules/.bin ve vendor/bin çalıştırılabilir
+    if [[ -d "${APP_DIR}/node_modules/.bin" ]]; then
+        try_run "node_modules/.bin çalıştırılabilir yapılıyor" "chmod -R +x ${APP_DIR}/node_modules/.bin"
+    fi
+    if [[ -d "${APP_DIR}/vendor/bin" ]]; then
+        try_run "vendor/bin çalıştırılabilir yapılıyor" "chmod -R +x ${APP_DIR}/vendor/bin"
+    fi
+
     # Log kaydet
     log_action "Dosya izinleri düzeltildi. Proje: ${APP_NAME}" "INFO"
 

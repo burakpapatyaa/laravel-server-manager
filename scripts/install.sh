@@ -612,6 +612,8 @@ configure_laravel() {
     chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
     chmod 660 "$APP_DIR/.env"
     [[ -f "$APP_DIR/artisan" ]] && chmod +x "$APP_DIR/artisan"
+    [[ -d "$APP_DIR/node_modules/.bin" ]] && chmod -R +x "$APP_DIR/node_modules/.bin" 2>/dev/null || true
+    [[ -d "$APP_DIR/vendor/bin" ]] && chmod -R +x "$APP_DIR/vendor/bin" 2>/dev/null || true
 
     print_success "Laravel yapılandırması tamamlandı! (${deploy_user}:www-data)"
 
