@@ -114,6 +114,22 @@ run_migrations() {
     cd - > /dev/null
 }
 
+# Front-end asset derleme (Vite / Mix)
+build_assets() {
+    if [[ -f "${APP_DIR}/package.json" ]]; then
+        print_subheader "Front-end Asset Derleme (Vite)"
+        cd "$APP_DIR"
+
+        if command -v npm &> /dev/null; then
+            try_run_verbose "NPM bağımlılıkları yükleniyor" "npm install --no-audit 2>&1"
+            try_run_verbose "Asset'ler derleniyor (npm run build)" "npm run build 2>&1"
+        else
+            print_warning "NPM bulunamadı. Asset derleme atlandı (Gerekirse 'sudo apt install nodejs npm' kurun)."
+        fi
+        cd - > /dev/null
+    fi
+}
+
 # Cache temizle ve yeniden oluştur
 refresh_cache() {
     print_subheader "Cache Yenileniyor"
@@ -195,6 +211,7 @@ main() {
     pull_latest_code
     update_dependencies
     run_migrations
+    build_assets
     refresh_cache
     fix_permissions
     restart_workers

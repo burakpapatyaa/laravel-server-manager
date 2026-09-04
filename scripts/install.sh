@@ -547,6 +547,18 @@ configure_laravel() {
     # Storage link
     try_run "Storage symlink oluşturuluyor" "php artisan storage:link"
 
+    # Front-end assets (Vite / Mix)
+    if [[ -f "package.json" ]]; then
+        print_step "Front-end paketleri kontrol ediliyor..."
+        if ! command -v npm &> /dev/null; then
+            try_run "Node.js ve NPM kuruluyor" "apt-get install -y nodejs npm"
+        fi
+        if command -v npm &> /dev/null; then
+            try_run_verbose "NPM bağımlılıkları kuruluyor" "npm install --no-audit 2>&1"
+            try_run_verbose "Asset'ler derleniyor (npm run build)" "npm run build 2>&1"
+        fi
+    fi
+
     # Cache oluştur
     try_run "Config cache oluşturuluyor" "php artisan config:cache"
     try_run "Route cache oluşturuluyor" "php artisan route:cache"

@@ -145,8 +145,9 @@ laravel-server-manager/
 
 | Komut | Açıklama |
 |-------|----------|
-| `bash scripts/deploy.sh` | Akıllı deploy (git pull + migrate + cache) |
+| `bash scripts/deploy.sh` | Akıllı deploy (git pull + migrate + cache + vite build) |
 | `bash scripts/status.sh` | Sistem durumu raporu |
+| `bash scripts/view-logs.sh` | Laravel/Nginx loglarını izle & hata teşhis |
 | `bash scripts/fix-laravel-cache.sh` | Cache temizle/yenile |
 | `sudo bash scripts/fix-permissions.sh` | Dosya izinlerini düzelt |
 | `bash scripts/fix-storage.sh` | Storage symlink onar |

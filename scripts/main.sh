@@ -80,6 +80,7 @@ show_menu() {
     echo -e "  ${CYAN}16)${NC}  Nginx Yönetimi"
     echo -e "  ${CYAN}17)${NC}  Session Yönetimi"
     echo -e "  ${CYAN}18)${NC}  PHP Sürüm Değiştir / Yükselt"
+    echo -e "  ${CYAN}19)${NC}  Log Görüntüleyici & Hata Teşhis"
     echo ""
     echo -e "  ${YELLOW} q)${NC}  Çıkış"
     echo ""
@@ -109,6 +110,7 @@ execute_choice() {
         16) bash "${SCRIPT_DIR}/fix-nginx-version.sh" ;;
         17) bash "${SCRIPT_DIR}/fix-sessions.sh" ;;
         18) bash "${SCRIPT_DIR}/switch-php.sh" ;;
+        19) bash "${SCRIPT_DIR}/view-logs.sh" ;;
         q|Q)
             echo ""
             print_info "Laravel Server Manager kapatılıyor..."
