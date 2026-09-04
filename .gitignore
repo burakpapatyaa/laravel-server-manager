@@ -1,0 +1,19 @@
+# Hassas ayar dosyaları
+scripts/config.sh
+scripts/configs/
+
+# Yedek ve log dosyaları
+*.bak
+*.log
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db

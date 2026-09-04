@@ -1,0 +1,45 @@
+#!/bin/bash
+# ============================================================================
+# Laravel Server Manager — Örnek Config Dosyası
+# ============================================================================
+# Bu dosya install.sh tarafından otomatik oluşturulur.
+# Elle düzenlemek için: bash scripts/settings.sh
+# ============================================================================
+# ⚠️  GÜVENLİK: Bu dosya .gitignore'a eklenmiştir.
+#     Asla Git'e commit etmeyin!
+# ============================================================================
+
+# ── Proje Bilgileri ──
+APP_NAME="laravel-app"
+APP_DIR="/var/www/laravel-app"
+DOMAIN=""
+
+# ── Sunucu Bilgileri ──
+SERVER_IP="0.0.0.0"
+
+# ── GitHub Bilgileri ──
+GITHUB_USER=""
+GITHUB_REPO=""
+GITHUB_BRANCH="main"
+REPO_VISIBILITY="public"    # public | private
+GITHUB_TOKEN=""              # Private repolar için PAT
+
+# ── Veritabanı Bilgileri ──
+DB_NAME="laravel_db"
+DB_USER="laravel_user"
+DB_PASS=""
+
+# ── PHP Bilgileri ──
+PHP_VERSION="8.2"
+
+# ── Yedekleme ──
+BACKUP_DIR="/var/backups/laravel-manager"
+BACKUP_RETENTION_DAYS="30"
+
+# ── Supervisor ──
+SUPERVISOR_WORKERS="3"
+QUEUE_CONNECTION="database"
+
+# ── Genel ──
+DEPLOY_TIMESTAMP=""
+LSM_INSTALLED_AT=""
