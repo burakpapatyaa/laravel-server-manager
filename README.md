@@ -138,6 +138,7 @@ laravel-server-manager/
 |-------|----------|
 | `sudo bash scripts/install.sh` | İlk kurulum sihirbazı |
 | `bash scripts/settings.sh` | Ayarları görüntüle/değiştir |
+| `bash scripts/switch-php.sh` | PHP sürüm değiştirme / yükseltme (8.1, 8.2, 8.3, 8.4) |
 | `bash scripts/main.sh` | Ana yönetim menüsü |
 
 ### Deploy & Bakım

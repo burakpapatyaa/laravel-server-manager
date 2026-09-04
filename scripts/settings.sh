@@ -161,18 +161,9 @@ change_setting() {
             print_info ".env dosyasını da güncellemeyi unutmayın!"
             ;;
         13)
-            echo -e "  ${CYAN}PHP sürümü:${NC}"
-            echo -e "    ${WHITE}1)${NC} PHP 8.1"
-            echo -e "    ${WHITE}2)${NC} PHP 8.2"
-            echo -e "    ${WHITE}3)${NC} PHP 8.3"
-            echo -ne "  ${CYAN}Seçiminiz${NC}: "
-            read -r php_choice
-            case "$php_choice" in
-                1) update_config_value "PHP_VERSION" "8.1" ;;
-                3) update_config_value "PHP_VERSION" "8.3" ;;
-                *) update_config_value "PHP_VERSION" "8.2" ;;
-            esac
-            print_warning "PHP sürümünü değiştirmek, Nginx ve PHP-FPM konfigürasyonunu güncellemeyi gerektirebilir."
+            bash "${SCRIPT_DIR}/switch-php.sh"
+            load_config
+            return 255
             ;;
         14)
             read_required "Yeni yedekleme dizini" new_value "$BACKUP_DIR"

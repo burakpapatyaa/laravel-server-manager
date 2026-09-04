@@ -79,6 +79,7 @@ show_menu() {
     echo -e "  ${CYAN}15)${NC}  MySQL Bağlantı Yönetimi"
     echo -e "  ${CYAN}16)${NC}  Nginx Yönetimi"
     echo -e "  ${CYAN}17)${NC}  Session Yönetimi"
+    echo -e "  ${CYAN}18)${NC}  PHP Sürüm Değiştir / Yükselt"
     echo ""
     echo -e "  ${YELLOW} q)${NC}  Çıkış"
     echo ""
@@ -107,6 +108,7 @@ execute_choice() {
         15) bash "${SCRIPT_DIR}/fix-mysql-connections.sh" ;;
         16) bash "${SCRIPT_DIR}/fix-nginx-version.sh" ;;
         17) bash "${SCRIPT_DIR}/fix-sessions.sh" ;;
+        18) bash "${SCRIPT_DIR}/switch-php.sh" ;;
         q|Q)
             echo ""
             print_info "Laravel Server Manager kapatılıyor..."

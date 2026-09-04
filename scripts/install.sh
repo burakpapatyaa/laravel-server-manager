@@ -123,6 +123,7 @@ collect_information() {
     echo -e "    ${WHITE}1)${NC} PHP 8.1"
     echo -e "    ${WHITE}2)${NC} PHP 8.2 ${GREEN}(Önerilen)${NC}"
     echo -e "    ${WHITE}3)${NC} PHP 8.3"
+    echo -e "    ${WHITE}4)${NC} PHP 8.4"
     echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[2]${NC}: "
     read -r php_choice
     php_choice="${php_choice:-2}"
@@ -130,6 +131,7 @@ collect_information() {
     case "$php_choice" in
         1) PHP_VERSION="8.1" ;;
         3) PHP_VERSION="8.3" ;;
+        4) PHP_VERSION="8.4" ;;
         *) PHP_VERSION="8.2" ;;
     esac
 
