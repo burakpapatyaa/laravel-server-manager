@@ -70,14 +70,25 @@ main() {
 
                 echo ""
                 print_step "Cache yeniden oluşturuluyor..."
-                try_run "Config cache oluşturuluyor" "php artisan config:cache"
+                echo -e "  ${YELLOW}⚠️  NOT:${NC} config:cache aktifken kodda env() kullanımı varsa 500 hatası oluşur."
+                echo -e "  ${CYAN}ℹ️  ${NC} Projenizde env() → config() dönüşümü yapıldıysa güvenle kullanabilirsiniz."
+                echo ""
+                if confirm_action "config:cache oluşturulsun mu? (env() kullanımı yoksa güvenli)"; then
+                    try_run "Config cache oluşturuluyor" "php artisan config:cache"
+                else
+                    print_info "Config cache atlandı. Uygulama .env'den doğrudan okuyacak."
+                fi
                 try_run "Route cache oluşturuluyor" "php artisan route:cache"
                 try_run "View cache oluşturuluyor" "php artisan view:cache"
                 try_run "Event cache oluşturuluyor" "php artisan event:cache"
                 ;;
             3)
                 try_run "Config cache temizleniyor" "php artisan config:clear"
-                if confirm_action "Yeniden oluşturulsun mu?"; then
+                echo ""
+                echo -e "  ${YELLOW}⚠️  NOT:${NC} config:cache aktifken kodda env() kullanımı varsa 500 hatası oluşur."
+                echo -e "  ${CYAN}ℹ️  ${NC} Sadece config/ dosyalarında env() varsa güvenlidir."
+                echo ""
+                if confirm_action "Config cache yeniden oluşturulsun mu?"; then
                     try_run "Config cache oluşturuluyor" "php artisan config:cache"
                 fi
                 ;;

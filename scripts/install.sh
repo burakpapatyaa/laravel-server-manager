@@ -671,8 +671,10 @@ configure_laravel() {
         fi
     fi
 
-    # Cache oluştur
-    try_run "Config cache oluşturuluyor" "php artisan config:cache"
+    # Cache oluştur (config:cache kasıtlı olarak çalıştırılmıyor)
+    # Sebep: Kodda env() kullanımı varsa config:cache aktifken 500 hatası oluşur.
+    # Çözüm: Projenizde env() → config() dönüşümü tamamlandıktan sonra
+    #         fix-laravel-cache.sh > "2) Temizle ve yeniden oluştur" ile aktif edebilirsiniz.
     try_run "Route cache oluşturuluyor" "php artisan route:cache"
     try_run "View cache oluşturuluyor" "php artisan view:cache"
 
@@ -699,6 +701,22 @@ configure_laravel() {
     [[ -f "$APP_DIR/artisan" ]] && chmod +x "$APP_DIR/artisan"
     [[ -d "$APP_DIR/node_modules/.bin" ]] && chmod -R +x "$APP_DIR/node_modules/.bin" 2>/dev/null || true
     [[ -d "$APP_DIR/vendor/bin" ]] && chmod -R +x "$APP_DIR/vendor/bin" 2>/dev/null || true
+
+    # ACL: Kalıcı izinler — git pull / php artisan sonrası izin sorunu olmaz
+    if ! command -v setfacl &>/dev/null; then
+        apt-get install -y -q acl 2>/dev/null || true
+    fi
+    if command -v setfacl &>/dev/null; then
+        setfacl -R -m "u:${deploy_user}:rwx" "$APP_DIR/storage" 2>/dev/null || true
+        setfacl -R -m "u:${deploy_user}:rwx" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
+        setfacl -R -m "u:www-data:rwx" "$APP_DIR/storage" 2>/dev/null || true
+        setfacl -R -m "u:www-data:rwx" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
+        setfacl -R -d -m "u:${deploy_user}:rwx" "$APP_DIR/storage" 2>/dev/null || true
+        setfacl -R -d -m "u:${deploy_user}:rwx" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
+        setfacl -R -d -m "u:www-data:rwx" "$APP_DIR/storage" 2>/dev/null || true
+        setfacl -R -d -m "u:www-data:rwx" "$APP_DIR/bootstrap/cache" 2>/dev/null || true
+        print_success "ACL ayarlandı — kalıcı izinler aktif."
+    fi
 
     print_success "Laravel yapılandırması tamamlandı! (${deploy_user}:www-data)"
 
@@ -800,6 +818,10 @@ main() {
     # Proje hazır olduktan sonra Nginx Vhost ve Supervisor Worker yapılandırılır
     configure_nginx_vhost
     configure_supervisor_worker
+
+    # Dosya izinlerini ve ACL'yi kalıcı olarak ayarla
+    print_info "Dosya izinleri ve ACL ayarlanıyor..."
+    bash "${SCRIPT_DIR}/fix-permissions.sh" --auto 2>/dev/null || true
 
     # Logs dizinini oluştur
     mkdir -p "${SCRIPT_DIR}/../logs"

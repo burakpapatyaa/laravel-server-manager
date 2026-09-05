@@ -22,6 +22,7 @@
 - 📁 **Production-Ready PHP Ayarları** — Kurulumda `upload_max_filesize=100M`, `memory_limit=512M`, `max_execution_time=300` otomatik set edilir
 - 🌐 **Nginx Upload Desteği** — `client_max_body_size=100M` ve `fastcgi_read_timeout=300` varsayılan olarak yapılandırılır
 - 🔒 **MySQL Güvenliği** — Anonymous kullanıcılar ve test veritabanı kurulum sırasında otomatik kaldırılır
+- 🗂️ **ACL Tabanlı Kalıcı İzinler** — `storage/` ve `bootstrap/cache/` için ACL default kuralları kurulumda otomatik ayarlanır; `git pull` ve `php artisan` sonrası izin sorunları olmaz
 - 📊 **Kapsamlı Durum Raporu** — Sistem, servisler ve Laravel sağlık kontrolü
 - 🔄 **Akıllı Deploy** — Maintenance mode, git pull, migrate, cache, izin düzeltme
 - 🗄️ **Veritabanı Yönetimi** — Yedekleme, geri yükleme, otomatik temizlik
@@ -62,6 +63,9 @@ Kurulum sırasında otomatik yapılandırılan ayarlar:
 - 📁 **PHP ini:** `upload_max_filesize=100M`, `post_max_size=100M`, `memory_limit=512M`, `max_execution_time=300`
 - 🌐 **Nginx:** `client_max_body_size=100M`, `fastcgi_read_timeout=300` (büyük dosya yükleme desteği)
 - 🔒 **MySQL:** Anonymous kullanıcılar ve `test` veritabanı kaldırılır
+- 🗂️ **ACL:** `storage/` ve `bootstrap/cache/` için kalıcı izinler — deploy sonrası `chown`/`chmod` gerekmez
+
+> **`config:cache` hakkında:** Kurulum sırasında `config:cache` kasıtlı olarak çalıştırılmaz. Eğer projenizde `env()` doğrudan controller/model/job'larda kullanılıyorsa `config:cache` aktifken 500 hatası oluşur. Tüm `env()` çağrılarını `config/` dosyalarına taşıdıktan sonra `fix-laravel-cache.sh` menüsünden güvenle aktif edebilirsiniz.
 
 ### 3. Ana Menüye Girin
 
