@@ -91,6 +91,9 @@ show_menu() {
 # Seçimi çalıştır
 execute_choice() {
     local choice="$1"
+    # Olası carriage return ve whitespace temizle
+    choice="${choice//$'\r'/}"
+    choice="${choice// /}"
 
     case "$choice" in
         0)  bash "${SCRIPT_DIR}/status.sh" ;;
@@ -113,6 +116,24 @@ execute_choice() {
         17) bash "${SCRIPT_DIR}/fix-sessions.sh" ;;
         18) bash "${SCRIPT_DIR}/switch-php.sh" ;;
         19) bash "${SCRIPT_DIR}/view-logs.sh" ;;
+        n|N)
+            # Yeni kurulum — install.sh'ı çalıştır, döndükten sonra yeni config aktif olur
+            echo ""
+            print_info "Yeni kurulum sihirbazı başlatılıyor..."
+            echo ""
+            sudo bash "${SCRIPT_DIR}/install.sh"
+            # Kurulumdan sonra yeni config'i yükle
+            if check_config; then
+                load_config
+                print_success "Yeni proje aktif edildi: ${APP_NAME:-?}"
+            fi
+            press_enter_to_continue
+            ;;
+        p|P)
+            # Proje değiştir
+            switch_project && load_config
+            press_enter_to_continue
+            ;;
         q|Q)
             echo ""
             print_info "Laravel Server Manager kapatılıyor..."
