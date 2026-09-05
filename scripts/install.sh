@@ -210,6 +210,15 @@ show_summary() {
 create_config() {
     print_step "Config dosyası oluşturuluyor..."
 
+    # configs/ dizinini oluştur ve proje adıyla kaydet
+    mkdir -p "${CONFIGS_DIR}"
+    local safe_name
+    safe_name=$(echo "${APP_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/_/g')
+    CONFIG_FILE="${CONFIGS_DIR}/${safe_name}.sh"
+    # Aktif proje olarak işaretle
+    echo "$safe_name" > "${ACTIVE_PROJECT_FILE}"
+    print_info "Config: ${CONFIG_FILE}"
+
     cat > "$CONFIG_FILE" << CONF
 #!/bin/bash
 # ============================================================================

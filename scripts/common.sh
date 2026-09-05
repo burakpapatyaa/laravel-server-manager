@@ -41,9 +41,25 @@ readonly BG_CYAN='\033[46m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
-# Config dosyası yolu
-CONFIG_FILE="${SCRIPT_DIR}/config.sh"
-readonly CONFIG_FILE
+# Config dizini ve aktif proje dosyası
+CONFIGS_DIR="${SCRIPT_DIR}/configs"
+ACTIVE_PROJECT_FILE="${SCRIPT_DIR}/.active_project"
+
+# Geriye dönük uyumluluk: configs/ yoksa eski config.sh'ı kullan
+if [[ -f "${SCRIPT_DIR}/config.sh" && ! -d "$CONFIGS_DIR" ]]; then
+    CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+else
+    # Aktif proje adını oku
+    _active_proj=""
+    if [[ -f "$ACTIVE_PROJECT_FILE" ]]; then
+        _active_proj="$(cat "$ACTIVE_PROJECT_FILE" | tr -d '[:space:]')"
+    fi
+    if [[ -n "$_active_proj" && -f "${CONFIGS_DIR}/${_active_proj}.sh" ]]; then
+        CONFIG_FILE="${CONFIGS_DIR}/${_active_proj}.sh"
+    else
+        CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+    fi
+fi
 
 # Versiyon
 readonly LSM_VERSION="1.0.0"

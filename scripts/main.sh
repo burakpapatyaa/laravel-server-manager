@@ -82,6 +82,8 @@ show_menu() {
     echo -e "  ${CYAN}18)${NC}  PHP Sürüm Değiştir / Yükselt"
     echo -e "  ${CYAN}19)${NC}  Log Görüntüleyici & Hata Teşhis"
     echo ""
+    echo -e "  ${YELLOW} n)${NC}  Yeni Kurulum (Yeni Proje Ekle)"
+    echo -e "  ${YELLOW} p)${NC}  Proje Değiştir"
     echo -e "  ${YELLOW} q)${NC}  Çıkış"
     echo ""
 }
