@@ -208,14 +208,14 @@ restart_pending_analyses() {
     cd "$APP_DIR"
 
     local pending_count
-    pending_count=$(php artisan tinker --execute="echo App\Models\Book::whereIn('status', ['pending','processing'])->count();" 2>/dev/null | tail -1 | tr -d '[:space:]')
+    pending_count=$(php artisan tinker --execute="echo App\Models\Book::whereIn('status', ['pending','processing','failed'])->count();" 2>/dev/null | tail -1 | tr -d '[:space:]')
 
     if [[ -z "$pending_count" || "$pending_count" == "0" ]]; then
         print_info "Yarıda kalan analiz yok."
     else
-        print_warning "${pending_count} adet yarıda kalmış analiz bulundu. Yeniden kuyruğa alınıyor..."
+        print_warning "${pending_count} adet yarıda kalmış/başarısız analiz bulundu. Yeniden kuyruğa alınıyor..."
         php artisan tinker --execute="
-App\Models\Book::whereIn('status', ['pending','processing'])->get()->each(function(\$b) {
+App\Models\Book::whereIn('status', ['pending','processing','failed'])->get()->each(function(\$b) {
     \$b->update(['status' => 'pending']);
     App\Jobs\ProcessBookJob::dispatch(\$b->id);
     echo 'Queued: '.\$b->title.\"\n\";
