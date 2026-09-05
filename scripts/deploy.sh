@@ -164,8 +164,8 @@ refresh_cache() {
     try_run "View cache temizleniyor" "php artisan view:clear"
     try_run "Event cache temizleniyor" "php artisan event:clear"
 
-    # Yeniden oluştur
-    try_run "Config cache oluşturuluyor" "php artisan config:cache"
+    # Yeniden oluştur (config:cache kasıtlı olarak çalıştırılmıyor —
+    # env() doğrudan okuyan kod varsa config:cache 500'e yol açar)
     try_run "Route cache oluşturuluyor" "php artisan route:cache"
     try_run "View cache oluşturuluyor" "php artisan view:cache"
     try_run "Event cache oluşturuluyor" "php artisan event:cache"
