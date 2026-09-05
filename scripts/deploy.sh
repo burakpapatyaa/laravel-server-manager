@@ -201,6 +201,32 @@ fix_permissions() {
     print_success "Dosya izinleri düzeltildi (${deploy_user}:www-data)."
 }
 
+# Yarıda kalan analizleri yeniden başlat
+restart_pending_analyses() {
+    print_subheader "Yarıda Kalan Analizler Kontrol Ediliyor"
+
+    cd "$APP_DIR"
+
+    local pending_count
+    pending_count=$(php artisan tinker --execute="echo App\Models\Book::whereIn('status', ['pending','processing'])->count();" 2>/dev/null | tail -1 | tr -d '[:space:]')
+
+    if [[ -z "$pending_count" || "$pending_count" == "0" ]]; then
+        print_info "Yarıda kalan analiz yok."
+    else
+        print_warning "${pending_count} adet yarıda kalmış analiz bulundu. Yeniden kuyruğa alınıyor..."
+        php artisan tinker --execute="
+App\Models\Book::whereIn('status', ['pending','processing'])->get()->each(function(\$b) {
+    \$b->update(['status' => 'pending']);
+    App\Jobs\ProcessBookJob::dispatch(\$b->id);
+    echo 'Queued: '.\$b->title.\"\n\";
+});
+" 2>/dev/null || true
+        print_success "${pending_count} analiz yeniden başlatıldı."
+    fi
+
+    cd - > /dev/null
+}
+
 # Queue worker'ları yeniden başlat
 restart_workers() {
     print_subheader "Queue Worker Yeniden Başlatılıyor"
@@ -251,6 +277,7 @@ main() {
     build_assets
     refresh_cache
     fix_permissions
+    restart_pending_analyses
     restart_workers
 
     # Maintenance mode kapat
