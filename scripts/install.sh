@@ -636,8 +636,22 @@ configure_laravel() {
     # Composer install
     try_run_verbose "Composer bağımlılıkları kuruluyor" "composer install --no-dev --optimize-autoloader --no-interaction 2>&1"
 
-    # Application key
-    try_run "Application key oluşturuluyor" "php artisan key:generate --force"
+    # Application key — kritik adım, hata yutulmaz
+    print_step "Application key oluşturuluyor..."
+    if ! php artisan key:generate --force 2>&1; then
+        print_error "php artisan key:generate başarısız oldu!"
+        exit 1
+    fi
+    # KEY'in gerçekten yazıldığını doğrula
+    local app_key_val
+    app_key_val=$(grep "^APP_KEY=" .env 2>/dev/null | cut -d= -f2- | tr -d '"')
+    if [[ -z "$app_key_val" || "$app_key_val" == "base64:" || ${#app_key_val} -lt 20 ]]; then
+        print_error "APP_KEY .env dosyasına yazılamadı! Kurulum durduruluyor."
+        print_info ".env içeriği kontrol ediliyor:"
+        grep "APP_KEY" .env || echo "  APP_KEY satırı bulunamadı!"
+        exit 1
+    fi
+    print_success "APP_KEY doğrulandı (${#app_key_val} karakter)."
 
     # Migration
     try_run_verbose "Veritabanı migrate ediliyor" "php artisan migrate --force 2>&1"
