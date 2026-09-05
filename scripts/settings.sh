@@ -78,10 +78,15 @@ show_settings_menu() {
     echo -e "  ${WHITE}16)${NC} Worker Sayısı"
     echo -e "  ${WHITE}17)${NC} Queue Bağlantı Tipi"
     echo ""
+    echo -e "  ${MAGENTA}── Sunucu Limitleri ──${NC}"
+    echo -e "  ${WHITE}18)${NC} Upload Boyutu (upload_max_filesize / client_max_body_size)"
+    echo -e "  ${WHITE}19)${NC} PHP Memory Limiti (memory_limit)"
+    echo -e "  ${WHITE}20)${NC} Timeout (max_execution_time / fastcgi_read_timeout)"
+    echo ""
     echo -e "  ${MAGENTA}── İçe/Dışa Aktarma ──${NC}"
-    echo -e "  ${WHITE}20)${NC} 📤 Config Dışa Aktar"
-    echo -e "  ${WHITE}21)${NC} 📥 Config İçe Aktar"
-    echo -e "  ${WHITE}22)${NC} 🔄 Tüm Ayarları Sıfırla"
+    echo -e "  ${WHITE}23)${NC} 📤 Config Dışa Aktar"
+    echo -e "  ${WHITE}24)${NC} 📥 Config İçe Aktar"
+    echo -e "  ${WHITE}25)${NC} 🔄 Tüm Ayarları Sıfırla"
     echo ""
     echo -e "  ${WHITE} 0)${NC} ← Geri Dön"
 }
@@ -193,7 +198,22 @@ change_setting() {
                 *) update_config_value "QUEUE_CONNECTION" "database" ;;
             esac
             ;;
+        18)
+            read_required "Upload boyutu (örn: 50M, 100M, 200M)" new_value "${UPLOAD_MAX_SIZE:-100M}"
+            update_config_value "UPLOAD_MAX_SIZE" "$new_value"
+            print_info "PHP ini ve Nginx'te uygulamak için: deploy.sh çalıştırın veya sunucuda manuel olarak güncelleyin."
+            ;;
+        19)
+            read_required "PHP memory limiti (örn: 256M, 512M, 1G)" new_value "${PHP_MEMORY_LIMIT:-512M}"
+            update_config_value "PHP_MEMORY_LIMIT" "$new_value"
+            print_info "PHP ini'de uygulamak için: deploy.sh çalıştırın veya sunucuda manuel olarak güncelleyin."
+            ;;
         20)
+            read_required "Timeout süresi saniye cinsinden (örn: 120, 300, 600)" new_value "${MAX_EXECUTION_TIME:-300}"
+            update_config_value "MAX_EXECUTION_TIME" "$new_value"
+            print_info "PHP ini ve Nginx'te uygulamak için: deploy.sh çalıştırın veya sunucuda manuel olarak güncelleyin."
+            ;;
+        23)
             # Config dışa aktar
             local export_dir="${SCRIPT_DIR}/exports"
             mkdir -p "$export_dir"
@@ -205,7 +225,7 @@ change_setting() {
                 export_config "$export_file" "false"
             fi
             ;;
-        21)
+        24)
             # Config içe aktar
             read_required "İçe aktarılacak dosya yolu" import_file
             if [[ -f "$import_file" ]]; then
@@ -220,7 +240,7 @@ change_setting() {
                 print_error "Dosya bulunamadı: ${import_file}"
             fi
             ;;
-        22)
+        25)
             # Tüm ayarları sıfırla
             if confirm_action "⚠️  TÜM AYARLAR SİLİNECEK! Emin misiniz?" "h"; then
                 if confirm_action "Son kez onaylayın — config dosyası silinecek!" "h"; then

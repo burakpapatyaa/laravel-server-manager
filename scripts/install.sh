@@ -146,6 +146,31 @@ collect_information() {
 
     read_secret "Veritabanı şifresi" DB_PASS
 
+    print_header "⚙️ Sunucu Limitleri"
+
+    print_info "Bu değerler PHP ini ve Nginx için uygulanır. Enter ile varsayılanı kabul edebilirsiniz."
+    echo ""
+
+    echo -e "  ${CYAN}Maksimum dosya yükleme boyutu (upload_max_filesize / client_max_body_size):${NC}"
+    echo -e "  ${GRAY}Örn: 50M, 100M, 200M${NC}"
+    echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[100M]${NC}: "
+    read -r upload_input
+    UPLOAD_MAX_SIZE="${upload_input:-100M}"
+
+    echo ""
+    echo -e "  ${CYAN}PHP bellek limiti (memory_limit):${NC}"
+    echo -e "  ${GRAY}Örn: 256M, 512M, 1G${NC}"
+    echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[512M]${NC}: "
+    read -r memory_input
+    PHP_MEMORY_LIMIT="${memory_input:-512M}"
+
+    echo ""
+    echo -e "  ${CYAN}Maksimum çalışma süresi / timeout (max_execution_time / fastcgi_read_timeout):${NC}"
+    echo -e "  ${GRAY}Saniye cinsinden. Örn: 120, 300, 600${NC}"
+    echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[300]${NC}: "
+    read -r timeout_input
+    MAX_EXECUTION_TIME="${timeout_input:-300}"
+
     # Yedekleme dizini
     BACKUP_DIR="/var/backups/laravel-manager"
 }
@@ -168,6 +193,10 @@ show_summary() {
     print_table_row "DB Adı:" "$DB_NAME" "$WHITE"
     print_table_row "DB Kullanıcı:" "$DB_USER" "$WHITE"
     print_table_row "DB Şifre:" "********" "$WHITE"
+    print_separator
+    print_table_row "Upload Limiti:" "$UPLOAD_MAX_SIZE" "$WHITE"
+    print_table_row "Memory Limiti:" "$PHP_MEMORY_LIMIT" "$WHITE"
+    print_table_row "Timeout:" "${MAX_EXECUTION_TIME}s" "$WHITE"
     print_separator
 
     echo ""
@@ -214,6 +243,12 @@ DB_PASS="${DB_PASS}"
 
 # ── PHP Bilgileri ──
 PHP_VERSION="${PHP_VERSION}"
+
+# ── Sunucu Limitleri ──
+# Bu değerleri sonradan değiştirmek için: bash scripts/settings.sh
+UPLOAD_MAX_SIZE="${UPLOAD_MAX_SIZE}"
+PHP_MEMORY_LIMIT="${PHP_MEMORY_LIMIT}"
+MAX_EXECUTION_TIME="${MAX_EXECUTION_TIME}"
 
 # ── Yedekleme ──
 BACKUP_DIR="${BACKUP_DIR}"
@@ -276,6 +311,21 @@ install_php() {
     # PHP-FPM'i başlat
     try_run "PHP-FPM başlatılıyor" "systemctl enable php${PHP_VERSION}-fpm && systemctl start php${PHP_VERSION}-fpm"
 
+    # PHP ini ayarları (upload, memory, timeout)
+    print_step "PHP ini ayarları yapılandırılıyor..."
+    local php_ini_fpm="/etc/php/${PHP_VERSION}/fpm/php.ini"
+    local php_ini_cli="/etc/php/${PHP_VERSION}/cli/php.ini"
+    for ini_file in "$php_ini_fpm" "$php_ini_cli"; do
+        [[ -f "$ini_file" ]] || continue
+        sed -i "s/^upload_max_filesize.*/upload_max_filesize = ${UPLOAD_MAX_SIZE}/"   "$ini_file"
+        sed -i "s/^post_max_size.*/post_max_size = ${UPLOAD_MAX_SIZE}/"               "$ini_file"
+        sed -i "s/^max_execution_time.*/max_execution_time = ${MAX_EXECUTION_TIME}/"  "$ini_file"
+        sed -i "s/^max_input_time.*/max_input_time = ${MAX_EXECUTION_TIME}/"          "$ini_file"
+        sed -i "s/^memory_limit.*/memory_limit = ${PHP_MEMORY_LIMIT}/"               "$ini_file"
+    done
+    systemctl restart "php${PHP_VERSION}-fpm" > /dev/null 2>&1 || true
+    print_success "PHP ini ayarları yapılandırıldı (${UPLOAD_MAX_SIZE} upload, ${PHP_MEMORY_LIMIT} memory, ${MAX_EXECUTION_TIME}s timeout)."
+
     print_success "PHP ${PHP_VERSION} başarıyla kuruldu!"
 }
 
@@ -336,7 +386,14 @@ install_mysql() {
     mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>/dev/null || true
     mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
 
+    # MySQL root güvenliği: anonymous kullanıcı ve test DB'yi kaldır
+    mysql -e "DELETE FROM mysql.user WHERE User='';" 2>/dev/null || true
+    mysql -e "DROP DATABASE IF EXISTS test;" 2>/dev/null || true
+    mysql -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" 2>/dev/null || true
+    mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
+
     print_success "Veritabanı '${DB_NAME}' ve kullanıcı '${DB_USER}' oluşturuldu."
+    print_success "MySQL güvenlik ayarları yapılandırıldı (anonymous kullanıcı ve test DB kaldırıldı)."
 }
 
 # Nginx kurulumu
@@ -381,6 +438,9 @@ server {
     server_name ${server_name};
     root ${APP_DIR}/public;
 
+    # Dosya yükleme limiti (büyük PDF/dosya yüklemeleri için)
+    client_max_body_size ${UPLOAD_MAX_SIZE};
+
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
     add_header X-XSS-Protection "1; mode=block";
@@ -402,6 +462,8 @@ server {
         fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
+        fastcgi_read_timeout ${MAX_EXECUTION_TIME};
+        fastcgi_hide_header X-Powered-By;
     }
 
     location ~ /\.(?!well-known).* {

@@ -18,11 +18,13 @@
 ## ✨ Özellikler
 
 - 🔧 **Config-Driven Mimari** — Hiçbir IP, şifre veya proje adı hardcode edilmez
-- 🚀 **Tek Komutla Kurulum** — İnteraktif sihirbaz ile sunucu sıfırdan yapılandırılır
+- 🚀 **Tek Komutla Kurulum** — İnteraktif sihirbaz ile sunucu sıfırdan yapılandırılır (PHP 8.1–8.4, MySQL, Nginx, Supervisor, UFW)
+- 📁 **Production-Ready PHP Ayarları** — Kurulumda `upload_max_filesize=100M`, `memory_limit=512M`, `max_execution_time=300` otomatik set edilir
+- 🌐 **Nginx Upload Desteği** — `client_max_body_size=100M` ve `fastcgi_read_timeout=300` varsayılan olarak yapılandırılır
+- 🔒 **MySQL Güvenliği** — Anonymous kullanıcılar ve test veritabanı kurulum sırasında otomatik kaldırılır
 - 📊 **Kapsamlı Durum Raporu** — Sistem, servisler ve Laravel sağlık kontrolü
 - 🔄 **Akıllı Deploy** — Maintenance mode, git pull, migrate, cache, izin düzeltme
 - 🗄️ **Veritabanı Yönetimi** — Yedekleme, geri yükleme, otomatik temizlik
-- 🔒 **SSL Kurulumu** — Let's Encrypt sertifikası, otomatik yenileme
 - 🛡️ **Güvenlik Araçları** — IP engelleme, güvenlik taraması, firewall yönetimi
 - 👷 **Queue Worker Yönetimi** — Supervisor entegrasyonu, worker ölçekleme
 - 🧹 **Bakım Araçları** — Cache, izin, storage, disk, session yönetimi
@@ -53,8 +55,13 @@ Kurulum sihirbazı size şu soruları soracak:
 - 📝 Proje adı ve dizin yolu
 - 🌐 Sunucu IP adresi ve domain
 - 🔗 GitHub repo bilgileri (Public/Private)
-- 🐘 PHP sürümü (8.1 / 8.2 / 8.3)
+- 🐘 PHP sürümü (8.1 / 8.2 / 8.3 / 8.4)
 - 🗄️ Veritabanı bilgileri
+
+Kurulum sırasında otomatik yapılandırılan ayarlar:
+- 📁 **PHP ini:** `upload_max_filesize=100M`, `post_max_size=100M`, `memory_limit=512M`, `max_execution_time=300`
+- 🌐 **Nginx:** `client_max_body_size=100M`, `fastcgi_read_timeout=300` (büyük dosya yükleme desteği)
+- 🔒 **MySQL:** Anonymous kullanıcılar ve `test` veritabanı kaldırılır
 
 ### 3. Ana Menüye Girin
 
