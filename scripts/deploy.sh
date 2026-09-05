@@ -272,6 +272,15 @@ main() {
 
     # Deploy adımları
     pull_latest_code
+
+    # Eski cache'i hemen temizle (yeni kod eski cache ile çalışmasın)
+    print_subheader "Eski Cache Temizleniyor"
+    cd "$APP_DIR"
+    try_run "Config cache temizleniyor" "php artisan config:clear"
+    try_run "Route cache temizleniyor" "php artisan route:clear"
+    try_run "View cache temizleniyor" "php artisan view:clear"
+    cd - > /dev/null
+
     update_dependencies
     run_migrations
     build_assets
