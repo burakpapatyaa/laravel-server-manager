@@ -677,6 +677,184 @@ validate_path() {
 }
 
 # ============================================================================
+# GITHUB BAĞLANTI TESTİ
+# ============================================================================
+
+# GitHub repo bağlantısını ve token yetkilerini test et
+# Kullanım: test_github_connection <user> <repo> <visibility> [token]
+test_github_connection() {
+    local gh_user="${1:-${GITHUB_USER:-}}"
+    local gh_repo="${2:-${GITHUB_REPO:-}}"
+    local visibility="${3:-${REPO_VISIBILITY:-public}}"
+    local token="${4:-${GITHUB_TOKEN:-}}"
+
+    if [[ -z "$gh_user" || -z "$gh_repo" ]]; then
+        print_warning "GitHub kullanıcı adı veya repo adı eksik, test atlanıyor."
+        return 1
+    fi
+
+    echo ""
+    print_subheader "🔗 GitHub Bağlantı Testi"
+    print_info "Test ediliyor: ${gh_user}/${gh_repo} (${visibility})"
+    echo ""
+
+    # curl mevcut mu?
+    if ! command -v curl &>/dev/null; then
+        print_warning "curl bulunamadı. Bağlantı testi atlanıyor."
+        return 1
+    fi
+
+    local api_url="https://api.github.com/repos/${gh_user}/${gh_repo}"
+    local http_code
+    local response_body
+
+    if [[ "$visibility" == "private" && -n "$token" ]]; then
+        # Private repo: token ile test
+        response_body=$(curl -s -w "\n__HTTP_CODE__:%{http_code}" \
+            -H "Authorization: Bearer ${token}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$api_url" 2>/dev/null || echo "")
+    else
+        # Public repo: token olmadan test
+        response_body=$(curl -s -w "\n__HTTP_CODE__:%{http_code}" \
+            -H "Accept: application/vnd.github+json" \
+            "$api_url" 2>/dev/null || echo "")
+    fi
+
+    # HTTP code'u ayıkla
+    http_code=$(echo "$response_body" | grep "__HTTP_CODE__:" | cut -d':' -f2 | tr -d '[:space:]')
+    local json_body
+    json_body=$(echo "$response_body" | grep -v "__HTTP_CODE__:")
+
+    # Sonuçları değerlendir
+    case "$http_code" in
+        200)
+            print_success "Repo erişilebilir! (HTTP 200)"
+            echo ""
+
+            # Repo bilgilerini parse et
+            local repo_full_name
+            repo_full_name=$(echo "$json_body" | grep -o '"full_name":"[^"]*"' | cut -d'"' -f4 || echo "")
+            local default_branch
+            default_branch=$(echo "$json_body" | grep -o '"default_branch":"[^"]*"' | cut -d'"' -f4 || echo "")
+            local private_flag
+            private_flag=$(echo "$json_body" | grep -o '"private":[^,}]*' | cut -d':' -f2 | tr -d ' ' || echo "")
+            local repo_size
+            repo_size=$(echo "$json_body" | grep -o '"size":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
+            local open_issues
+            open_issues=$(echo "$json_body" | grep -o '"open_issues_count":[0-9]*' | cut -d':' -f2 || echo "0")
+            local pushed_at
+            pushed_at=$(echo "$json_body" | grep -o '"pushed_at":"[^"]*"' | cut -d'"' -f4 || echo "")
+
+            print_table_row "Repo:"         "${repo_full_name:-${gh_user}/${gh_repo}}"  "$WHITE"
+            print_table_row "Varsayılan Branch:" "${default_branch:-Bilinmiyor}"       "$CYAN"
+            print_table_row "Erişim Tipi:"  "$([[ "$private_flag" == "true" ]] && echo "🔒 Private" || echo "🌐 Public")" "$YELLOW"
+            print_table_row "Boyut:"        "${repo_size} KB"                           "$WHITE"
+            print_table_row "Son Push:"     "${pushed_at:-Bilinmiyor}"                 "$GRAY"
+            print_table_row "Açık Issue:"   "${open_issues}"                           "$WHITE"
+
+            # Private ise token yetkilerini de göster
+            if [[ "$visibility" == "private" && -n "$token" ]]; then
+                echo ""
+                _show_token_scopes "$token"
+            fi
+
+            echo ""
+            return 0
+            ;;
+        301|302)
+            print_warning "Repo yönlendirmesi var (HTTP ${http_code}). Repo adı değişmiş olabilir."
+            return 1
+            ;;
+        401)
+            print_error "Kimlik doğrulama başarısız! (HTTP 401)"
+            print_info "Token geçersiz, süresi dolmuş veya bu repoya erişim yetkisi yok."
+            if [[ "$visibility" == "private" ]]; then
+                print_info "Fine-grained token için: Settings → Developer settings → Personal access tokens → Fine-grained"
+                print_info "Gereken izin: Repository → Contents → Read"
+            fi
+            echo ""
+            return 1
+            ;;
+        403)
+            print_error "Erişim reddedildi! (HTTP 403)"
+            print_info "Token'ın bu repo için yeterli yetkisi yok."
+            if [[ -n "$token" ]]; then
+                _show_token_scopes "$token"
+            fi
+            echo ""
+            return 1
+            ;;
+        404)
+            print_error "Repo bulunamadı! (HTTP 404)"
+            echo ""
+            print_table_row "Kontrol Et 1:" "Kullanıcı adı doğru mu? → ${gh_user}"            "$YELLOW"
+            print_table_row "Kontrol Et 2:" "Repo adı doğru mu?      → ${gh_repo}"            "$YELLOW"
+            if [[ "$visibility" == "private" ]]; then
+                print_table_row "Kontrol Et 3:" "Token bu repoya erişebiliyor mu?"              "$YELLOW"
+                print_table_row "Kontrol Et 4:" "Fine-grained token ise repo seçili mi?"        "$YELLOW"
+            fi
+            echo ""
+            return 1
+            ;;
+        "")
+            print_error "Bağlantı kurulamadı! Sunucunun internete erişimi var mı?"
+            echo ""
+            return 1
+            ;;
+        *)
+            print_error "Beklenmeyen HTTP yanıtı: ${http_code}"
+            echo ""
+            return 1
+            ;;
+    esac
+}
+
+# Token scope/yetkilerini göster (yardımcı)
+_show_token_scopes() {
+    local token="$1"
+
+    print_step "Token yetkileri kontrol ediliyor..."
+
+    # GitHub API rate limit endpoint'i token bilgisini döner
+    local scope_response
+    scope_response=$(curl -s -I \
+        -H "Authorization: Bearer ${token}" \
+        -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/rate_limit" 2>/dev/null || echo "")
+
+    local scopes
+    scopes=$(echo "$scope_response" | grep -i "^x-oauth-scopes:" | cut -d':' -f2- | tr -d ' \r' || echo "")
+
+    local token_type
+    token_type=$(echo "$scope_response" | grep -i "^x-github-authentication-token-expiration:" | cut -d':' -f2- | tr -d '\r' || echo "")
+
+    echo ""
+    if [[ -n "$scopes" ]]; then
+        # Classic token
+        print_table_row "Token Tipi:"   "Classic PAT"                              "$CYAN"
+        print_table_row "Yetkiler:"     "${scopes:-Yetki yok (read-only)}"         "$GREEN"
+        # repo scope var mı kontrol et
+        if echo "$scopes" | grep -q "repo"; then
+            print_success "✅ 'repo' scope mevcut — private repo erişimi var."
+        else
+            print_warning "⚠️  'repo' scope eksik — private repo erişimi olmayabilir."
+        fi
+    else
+        # Fine-grained token — scope header dönmez
+        print_table_row "Token Tipi:"   "Fine-grained PAT"                         "$CYAN"
+        print_info "Fine-grained token yetkileri GitHub API üzerinden listelenemez."
+        print_info "Repo erişimi; token oluştururken seçtiğiniz 'Repository access' ayarına bağlıdır."
+        print_info "Gerekli izin: Contents → Read (ve Write gerekiyorsa Write de ekleyin)"
+    fi
+
+    if [[ -n "$token_type" ]]; then
+        print_table_row "Token Bitiş:" "$token_type" "$YELLOW"
+    fi
+}
+
+# ============================================================================
 # TAMAMLAMA MESAJI
 # ============================================================================
 

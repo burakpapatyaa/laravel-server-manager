@@ -125,10 +125,22 @@ change_setting() {
         5)
             read_required "Yeni GitHub kullanıcı adı" new_value "$GITHUB_USER"
             update_config_value "GITHUB_USER" "$new_value"
+            GITHUB_USER="$new_value"
+            echo ""
+            if confirm_action "Bağlantı testi yapılsın mı?"; then
+                load_config
+                test_github_connection "$GITHUB_USER" "$GITHUB_REPO" "$REPO_VISIBILITY" "$GITHUB_TOKEN" || true
+            fi
             ;;
         6)
             read_required "Yeni GitHub repo adı" new_value "$GITHUB_REPO"
             update_config_value "GITHUB_REPO" "$new_value"
+            GITHUB_REPO="$new_value"
+            echo ""
+            if confirm_action "Bağlantı testi yapılsın mı?"; then
+                load_config
+                test_github_connection "$GITHUB_USER" "$GITHUB_REPO" "$REPO_VISIBILITY" "$GITHUB_TOKEN" || true
+            fi
             ;;
         7)
             read_required "Yeni branch adı" new_value "$GITHUB_BRANCH"
@@ -142,14 +154,27 @@ change_setting() {
             read -r rt_choice
             if [[ "$rt_choice" == "2" ]]; then
                 update_config_value "REPO_VISIBILITY" "private"
+                REPO_VISIBILITY="private"
                 print_info "Private repo için token gerektiğini unutmayın."
             else
                 update_config_value "REPO_VISIBILITY" "public"
+                REPO_VISIBILITY="public"
+            fi
+            echo ""
+            if confirm_action "Bağlantı testi yapılsın mı?"; then
+                load_config
+                test_github_connection "$GITHUB_USER" "$GITHUB_REPO" "$REPO_VISIBILITY" "$GITHUB_TOKEN" || true
             fi
             ;;
         9)
             read_secret "Yeni GitHub Token (PAT)" new_value
             update_config_value "GITHUB_TOKEN" "$new_value"
+            GITHUB_TOKEN="$new_value"
+            echo ""
+            if confirm_action "Token ile bağlantı testi yapılsın mı?"; then
+                load_config
+                test_github_connection "$GITHUB_USER" "$GITHUB_REPO" "$REPO_VISIBILITY" "$GITHUB_TOKEN" || true
+            fi
             ;;
         10)
             read_required "Yeni veritabanı adı" new_value "$DB_NAME"

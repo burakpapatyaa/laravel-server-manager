@@ -821,6 +821,38 @@ main() {
     install_certbot
     configure_firewall
 
+    # Klonlamadan önce GitHub bağlantısını test et
+    print_header "🔗 GitHub Bağlantı Testi"
+    if ! test_github_connection "$GITHUB_USER" "$GITHUB_REPO" "$REPO_VISIBILITY" "$GITHUB_TOKEN"; then
+        echo ""
+        print_error "GitHub bağlantısı kurulamadı!"
+        print_warning "Repo bilgilerini veya token'ı düzeltin, ardından kuruluma devam edebilirsiniz."
+        echo ""
+        echo -e "  ${WHITE}1)${NC} Ayarları düzelt ve kuruluma devam et"
+        echo -e "  ${WHITE}2)${NC} Bağlantı hatası görmezden gel, yine de dene"
+        echo -e "  ${WHITE}q)${NC} Kurulumdan çık"
+        echo ""
+        echo -ne "  ${CYAN}Seçiminiz${NC}: "
+        read -r _gh_test_choice
+        case "${_gh_test_choice:-}" in
+            1)
+                bash "${SCRIPT_DIR}/settings.sh"
+                source "$CONFIG_FILE"
+                echo ""
+                print_info "Bağlantı yeniden test ediliyor..."
+                test_github_connection "$GITHUB_USER" "$GITHUB_REPO" "$REPO_VISIBILITY" "$GITHUB_TOKEN" || true
+                ;;
+            2)
+                print_warning "Bağlantı testi atlandı. Klonlama yine de deneniyor..."
+                ;;
+            *)
+                print_warning "Kurulum iptal edildi."
+                exit 0
+                ;;
+        esac
+    fi
+    press_enter_to_continue
+
     # Proje kurulumu (Önce repo klonlanır ve Laravel yapılandırılır)
     clone_repository
     configure_laravel
