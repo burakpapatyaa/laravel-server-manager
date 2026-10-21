@@ -61,7 +61,7 @@ pull_latest_code() {
     # Remote URL'yi güncelle (token değişmiş olabilir)
     local repo_url
     if [[ "$REPO_VISIBILITY" == "private" && -n "$GITHUB_TOKEN" ]]; then
-        repo_url="https://${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
+        repo_url="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
     else
         repo_url="https://github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
     fi
@@ -201,27 +201,23 @@ fix_permissions() {
     print_success "Dosya izinleri düzeltildi (${deploy_user}:www-data)."
 }
 
-# Yarıda kalan analizleri yeniden başlat
-restart_pending_analyses() {
-    print_subheader "Yarıda Kalan Analizler Kontrol Ediliyor"
+# Başarısız queue job'larını tekrar kuyruğa al
+retry_failed_jobs() {
+    print_subheader "Başarısız Queue Job'ları Kontrol Ediliyor"
 
     cd "$APP_DIR"
 
-    local pending_count
-    pending_count=$(php artisan tinker --execute="echo App\Models\Book::whereIn('status', ['pending','processing','failed'])->count();" 2>/dev/null | tail -1 | tr -d '[:space:]')
+    local failed_count
+    failed_count=$(php artisan queue:failed 2>/dev/null | grep -c "^|" || echo "0")
+    failed_count=$((failed_count - 1))  # Başlık satırını çıkar
 
-    if [[ -z "$pending_count" || "$pending_count" == "0" ]]; then
-        print_info "Yarıda kalan analiz yok."
+    if [[ "$failed_count" -le 0 ]]; then
+        print_info "Başarısız queue job bulunamadı."
     else
-        print_warning "${pending_count} adet yarıda kalmış/başarısız analiz bulundu. Yeniden kuyruğa alınıyor..."
-        php artisan tinker --execute="
-App\Models\Book::whereIn('status', ['pending','processing','failed'])->get()->each(function(\$b) {
-    \$b->update(['status' => 'pending']);
-    App\Jobs\ProcessBookJob::dispatch(\$b->id);
-    echo 'Queued: '.\$b->title.\"\n\";
-});
-" 2>/dev/null || true
-        print_success "${pending_count} analiz yeniden başlatıldı."
+        print_warning "${failed_count} adet başarısız job bulundu."
+        if confirm_action "Tüm başarısız job'lar tekrar denensin mi?"; then
+            php artisan queue:retry all 2>/dev/null && print_success "Başarısız job'lar yeniden kuyruğa alındı." || print_warning "Job retry başarısız veya failed_jobs tablosu yok."
+        fi
     fi
 
     cd - > /dev/null
@@ -286,7 +282,7 @@ main() {
     build_assets
     refresh_cache
     fix_permissions
-    restart_pending_analyses
+    retry_failed_jobs
     restart_workers
 
     # Maintenance mode kapat

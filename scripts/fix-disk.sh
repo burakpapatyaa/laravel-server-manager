@@ -68,7 +68,7 @@ main() {
                 fi
 
                 # APT cache
-                try_run "APT cache temizleniyor" "apt-get autoremove -y && apt-get autoclean -y"
+                try_run "APT cache temizleniyor" "DEBIAN_FRONTEND=noninteractive apt-get autoremove -y && DEBIAN_FRONTEND=noninteractive apt-get autoclean -y"
 
                 # Journal log
                 try_run "Journal logları temizleniyor" "journalctl --vacuum-time=7d"
@@ -95,13 +95,13 @@ main() {
                 ;;
             3)
                 print_subheader "APT Cache Temizliği"
-                try_run "APT autoremove" "apt-get autoremove -y"
-                try_run "APT autoclean" "apt-get autoclean -y"
+                try_run "APT autoremove" "DEBIAN_FRONTEND=noninteractive apt-get autoremove -y"
+                try_run "APT autoclean" "DEBIAN_FRONTEND=noninteractive apt-get autoclean -y"
                 try_run "APT clean" "apt-get clean"
                 ;;
             4)
                 print_subheader "Eski Kernel'lar Temizleniyor"
-                try_run "Eski kernel'lar kaldırılıyor" "apt-get --purge autoremove -y"
+                try_run "Eski kernel'lar kaldırılıyor" "DEBIAN_FRONTEND=noninteractive apt-get --purge autoremove -y"
                 ;;
             5)
                 print_subheader "Journal Log Temizliği"

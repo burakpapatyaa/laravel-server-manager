@@ -88,7 +88,7 @@ main() {
         print_success "ACL ayarlandı — git pull ve php artisan sonrası izin sorunu olmayacak."
     else
         print_warning "ACL (setfacl) kurulu değil. Kuruluyor..."
-        apt-get install -y -q acl 2>/dev/null && {
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -q acl 2>/dev/null && {
             setfacl -R -m "u:${deploy_user}:rwx" "${APP_DIR}/storage" 2>/dev/null || true
             setfacl -R -m "u:${deploy_user}:rwx" "${APP_DIR}/bootstrap/cache" 2>/dev/null || true
             setfacl -R -m "u:www-data:rwx" "${APP_DIR}/storage" 2>/dev/null || true
@@ -117,21 +117,6 @@ main() {
     fi
     if [[ -d "${APP_DIR}/vendor/bin" ]]; then
         try_run "vendor/bin çalıştırılabilir yapılıyor" "chmod -R +x ${APP_DIR}/vendor/bin"
-    fi
-
-    # ACL ile kalıcı izin — yeni dosyalar otomatik doğru izinle oluşur
-    if command -v setfacl &>/dev/null; then
-        try_run "ACL kuruluyor (storage/ — mevcut)" "setfacl -R -m u:${deploy_user}:rwx ${APP_DIR}/storage"
-        try_run "ACL kuruluyor (bootstrap/cache/ — mevcut)" "setfacl -R -m u:${deploy_user}:rwx ${APP_DIR}/bootstrap/cache"
-        try_run "ACL default kuralı (storage/ — yeni dosyalar)" "setfacl -R -d -m u:${deploy_user}:rwx ${APP_DIR}/storage"
-        try_run "ACL default kuralı (bootstrap/cache/ — yeni dosyalar)" "setfacl -R -d -m u:${deploy_user}:rwx ${APP_DIR}/bootstrap/cache"
-        try_run "ACL kuruluyor (www-data — storage/)" "setfacl -R -m u:www-data:rwx ${APP_DIR}/storage"
-        try_run "ACL default kuralı (www-data — storage/)" "setfacl -R -d -m u:www-data:rwx ${APP_DIR}/storage"
-        try_run "ACL kuruluyor (www-data — bootstrap/cache/)" "setfacl -R -m u:www-data:rwx ${APP_DIR}/bootstrap/cache"
-        try_run "ACL default kuralı (www-data — bootstrap/cache/)" "setfacl -R -d -m u:www-data:rwx ${APP_DIR}/bootstrap/cache"
-        print_success "ACL kalıcı izinler ayarlandı — yeni dosyalar otomatik doğru izinle oluşacak."
-    else
-        print_warning "setfacl bulunamadı. ACL izinleri atlandı. (apt install acl ile kurabilirsiniz)"
     fi
 
     # sudoers: deploy_user şifresiz www-data olarak php/composer çalıştırabilsin
