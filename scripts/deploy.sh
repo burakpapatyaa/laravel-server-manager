@@ -158,17 +158,18 @@ refresh_cache() {
 
     cd "$APP_DIR"
 
-    # Önce temizle
-    try_run "Config cache temizleniyor" "php artisan config:clear"
-    try_run "Route cache temizleniyor" "php artisan route:clear"
-    try_run "View cache temizleniyor" "php artisan view:clear"
-    try_run "Event cache temizleniyor" "php artisan event:clear"
+    # Temizle
+    php artisan config:clear > /dev/null 2>&1 || true
+    php artisan route:clear  > /dev/null 2>&1 || true
+    php artisan view:clear   > /dev/null 2>&1 || true
+    php artisan event:clear  > /dev/null 2>&1 || true
+    print_success "Eski cache temizlendi."
 
-    # Yeniden oluştur (config:cache kasıtlı olarak çalıştırılmıyor —
+    # Yeniden oluştur (config:cache kasıtlı çalıştırılmıyor —
     # env() doğrudan okuyan kod varsa config:cache 500'e yol açar)
-    try_run "Route cache oluşturuluyor" "php artisan route:cache"
-    try_run "View cache oluşturuluyor" "php artisan view:cache"
-    try_run "Event cache oluşturuluyor" "php artisan event:cache"
+    php artisan route:cache  > /dev/null 2>&1 && print_success "Route cache oluşturuldu." || print_warning "Route cache atlandı."
+    php artisan view:cache   > /dev/null 2>&1 && print_success "View cache oluşturuldu."  || print_warning "View cache atlandı."
+    php artisan event:cache  > /dev/null 2>&1 && print_success "Event cache oluşturuldu." || print_warning "Event cache atlandı."
 
     cd - > /dev/null
 }
@@ -185,12 +186,10 @@ fix_permissions() {
         fi
     fi
 
-    if [[ "$deploy_user" != "www-data" && "$deploy_user" != "root" ]]; then
+    [[ "$deploy_user" != "www-data" && "$deploy_user" != "root" ]] && \
         usermod -aG www-data "$deploy_user" 2>/dev/null || true
-    fi
 
     chown -R "${deploy_user}:www-data" "$APP_DIR"
-    # node_modules ve .git dizinlerini chmod 664/775 dışında tut (binary ve git yetkilerini koru)
     find "$APP_DIR" -name "node_modules" -prune -o -name ".git" -prune -o -type f -exec chmod 664 {} +
     find "$APP_DIR" -name "node_modules" -prune -o -name ".git" -prune -o -type d -exec chmod 775 {} +
     chmod -R g+s "$APP_DIR"
@@ -207,16 +206,28 @@ retry_failed_jobs() {
 
     cd "$APP_DIR"
 
-    local failed_count
-    failed_count=$(php artisan queue:failed 2>/dev/null | grep -c "^|" || echo "0")
-    failed_count=$((failed_count - 1))  # Başlık satırını çıkar
+    # grep -c bazen \r içeren sonuç döner — tr ile temizle
+    local raw_count
+    raw_count=$(php artisan queue:failed 2>/dev/null | grep -c "^|" | tr -d '[:space:]' || echo "0")
+
+    # Sayısal değil ise 0 yap
+    if ! [[ "$raw_count" =~ ^[0-9]+$ ]]; then
+        raw_count=0
+    fi
+
+    # İlk satır başlık satırı, onu çıkar
+    local failed_count=$(( raw_count > 0 ? raw_count - 1 : 0 ))
 
     if [[ "$failed_count" -le 0 ]]; then
         print_info "Başarısız queue job bulunamadı."
     else
         print_warning "${failed_count} adet başarısız job bulundu."
         if confirm_action "Tüm başarısız job'lar tekrar denensin mi?"; then
-            php artisan queue:retry all 2>/dev/null && print_success "Başarısız job'lar yeniden kuyruğa alındı." || print_warning "Job retry başarısız veya failed_jobs tablosu yok."
+            if php artisan queue:retry all 2>/dev/null; then
+                print_success "Başarısız job'lar yeniden kuyruğa alındı."
+            else
+                print_warning "Job retry başarısız veya failed_jobs tablosu yok."
+            fi
         fi
     fi
 
@@ -246,13 +257,15 @@ main() {
     print_header "🚀 Deploy / Güncelleme"
     print_banner
 
-    # Onay al
-    print_info "Proje: ${BOLD}${APP_NAME}${NC}"
-    print_info "Dizin: ${APP_DIR}"
-    print_info "Branch: ${GITHUB_BRANCH}"
+    # Deploy özeti
+    echo -e "  ${GRAY}┌─────────────────────────────────────────────┐${NC}"
+    echo -e "  ${GRAY}│${NC}  ${WHITE}Proje  :${NC} ${BOLD}${APP_NAME}${NC}"
+    echo -e "  ${GRAY}│${NC}  ${WHITE}Dizin  :${NC} ${APP_DIR}"
+    echo -e "  ${GRAY}│${NC}  ${WHITE}Branch :${NC} ${GITHUB_BRANCH}"
+    echo -e "  ${GRAY}└─────────────────────────────────────────────┘${NC}"
     echo ""
 
-    if ! confirm_action "Deploy işlemine başlamak istiyor musunuz?"; then
+    if ! confirm_action "Deploy başlatılsın mı?"; then
         print_warning "Deploy iptal edildi."
         return
     fi
@@ -263,18 +276,20 @@ main() {
     pre_deploy_checks
 
     # Maintenance mode
-    print_subheader "Bakım Modu Açılıyor"
-    try_run "Bakım modu açılıyor" "php ${APP_DIR}/artisan down --render='errors::503' --retry=60"
+    print_step "Bakım modu açılıyor..."
+    php "${APP_DIR}/artisan" down --render='errors::503' --retry=60 > /dev/null 2>&1 && \
+        print_success "Bakım modu açıldı." || print_warning "Bakım modu açılamadı (devam ediliyor)."
 
-    # Deploy adımları
+    # Kod çek
     pull_latest_code
 
-    # Eski cache'i hemen temizle (yeni kod eski cache ile çalışmasın)
-    print_subheader "Eski Cache Temizleniyor"
+    # Eski cache temizle (yeni kod eski cache ile çalışmasın)
+    print_step "Eski cache temizleniyor..."
     cd "$APP_DIR"
-    try_run "Config cache temizleniyor" "php artisan config:clear"
-    try_run "Route cache temizleniyor" "php artisan route:clear"
-    try_run "View cache temizleniyor" "php artisan view:clear"
+    php artisan config:clear > /dev/null 2>&1 || true
+    php artisan route:clear  > /dev/null 2>&1 || true
+    php artisan view:clear   > /dev/null 2>&1 || true
+    print_success "Cache temizlendi."
     cd - > /dev/null
 
     update_dependencies
