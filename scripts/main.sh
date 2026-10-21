@@ -29,13 +29,65 @@ load_config
 if [[ "${INSTALL_COMPLETE:-false}" != "true" ]]; then
     echo ""
     print_error "Kurulum yarıda kesilmiş veya henüz tamamlanmamış!"
-    print_warning "Config dosyası oluşturulmuş ama kurulum başarıyla bitmemiş."
-    print_info "Kurulumu tamamlamak için: sudo bash ${SCRIPT_DIR}/install.sh"
     echo ""
-    if ! confirm_action "Yine de menüyü açmak istiyor musunuz? (Önerilmez)"; then
-        exit 0
+
+    # Proje dizini hiç oluşmamışsa → büyük ihtimalle repo klonlanamadı
+    if [[ -n "${APP_DIR:-}" && ! -d "${APP_DIR}/.git" ]]; then
+        print_warning "Proje dizini bulunamadı veya boş: ${APP_DIR:-?}"
+        print_info "Muhtemel neden: GitHub kullanıcı adı, repo adı veya token hatalı."
+        echo ""
+        echo -e "  ${BOLD}${CYAN}Ne yapmak istersiniz?${NC}"
+        echo ""
+        echo -e "  ${WHITE}1)${NC} Ayarları düzelt, sonra klonlamayı yeniden dene ${GRAY}(Paketler zaten kurulu — hızlı)${NC}"
+        echo -e "  ${WHITE}2)${NC} Sıfırdan tam kurulum başlat ${GRAY}(Tüm adımlar)${NC}"
+        echo -e "  ${WHITE}3)${NC} Yine de menüyü aç ${GRAY}(Önerilmez)${NC}"
+        echo -e "  ${WHITE}q)${NC} Çıkış"
+        echo ""
+        echo -ne "  ${CYAN}Seçiminiz${NC}: "
+        read -r _incomplete_choice
+
+        case "${_incomplete_choice:-}" in
+            1)
+                echo ""
+                print_info "Önce ayarları düzenleyin, sonra klonlama otomatik başlayacak."
+                echo ""
+                bash "${SCRIPT_DIR}/settings.sh"
+                echo ""
+                if confirm_action "Ayarları kaydettiniz. Klonlama şimdi yeniden denensin mi?"; then
+                    exec sudo bash "${SCRIPT_DIR}/install.sh" --resume-from-clone
+                fi
+                exit 0
+                ;;
+            2)
+                exec sudo bash "${SCRIPT_DIR}/install.sh"
+                ;;
+            3)
+                print_warning "Menü açılıyor — bazı işlevler çalışmayabilir."
+                echo ""
+                ;;
+            *)
+                exit 0
+                ;;
+        esac
+    else
+        # Dizin var ama kurulum yarıda kalmış
+        print_warning "Config dosyası var ve proje dizini mevcut, ancak kurulum tamamlanamamış."
+        echo ""
+        echo -e "  ${WHITE}1)${NC} Klonlama adımından devam et ${GRAY}(Paketler zaten kurulu)${NC}"
+        echo -e "  ${WHITE}2)${NC} Sıfırdan tam kurulum başlat"
+        echo -e "  ${WHITE}3)${NC} Yine de menüyü aç ${GRAY}(Önerilmez)${NC}"
+        echo -e "  ${WHITE}q)${NC} Çıkış"
+        echo ""
+        echo -ne "  ${CYAN}Seçiminiz${NC}: "
+        read -r _incomplete_choice2
+
+        case "${_incomplete_choice2:-}" in
+            1) exec sudo bash "${SCRIPT_DIR}/install.sh" --resume-from-clone ;;
+            2) exec sudo bash "${SCRIPT_DIR}/install.sh" ;;
+            3) print_warning "Menü açılıyor." ; echo "" ;;
+            *) exit 0 ;;
+        esac
     fi
-    echo ""
 fi
 
 # Error trap

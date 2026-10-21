@@ -855,5 +855,76 @@ main() {
     echo ""
 }
 
+# ============================================================================
+# SADECE KLONLAMA VE SONRASINI ÇALIŞTIR (--resume-from-clone)
+# Paketler zaten kuruluysa kullanılır. Örn: yanlış repo/token sonrası düzeltme.
+# ============================================================================
+
+resume_from_clone() {
+    local start_time
+    start_time=$(date +%s)
+
+    print_header "🔄 Kurulum Devam Ettiriliyor (Klonlama Adımından)"
+    print_banner
+
+    # Config yükle — bilgiler zaten var
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        print_error "Config dosyası bulunamadı! Önce tam kurulumu çalıştırın: sudo bash ${SCRIPT_DIR}/install.sh"
+        exit 1
+    fi
+    source "$CONFIG_FILE"
+
+    print_info "Proje  : ${APP_NAME}"
+    print_info "Dizin  : ${APP_DIR}"
+    print_info "Repo   : ${GITHUB_USER}/${GITHUB_REPO} (${REPO_VISIBILITY})"
+    print_info "Branch : ${GITHUB_BRANCH}"
+    echo ""
+
+    if ! confirm_action "Bu bilgilerle klonlamayı yeniden denemek istiyor musunuz?"; then
+        print_warning "İşlem iptal edildi."
+        print_info "Ayarları düzenlemek için: bash ${SCRIPT_DIR}/settings.sh"
+        exit 0
+    fi
+
+    echo ""
+
+    # Klonla
+    clone_repository
+
+    # Laravel yapılandır
+    configure_laravel
+
+    # Nginx vhost ve Supervisor (zaten kuruluysa yeniden yaz)
+    configure_nginx_vhost
+    configure_supervisor_worker
+
+    # Dosya izinleri
+    bash "${SCRIPT_DIR}/fix-permissions.sh" --auto 2>/dev/null || true
+
+    # Logs dizini
+    mkdir -p "${SCRIPT_DIR}/../logs"
+
+    # Kurulum tamamlandı bayrağını yaz
+    if grep -q "^INSTALL_COMPLETE=" "$CONFIG_FILE" 2>/dev/null; then
+        sed -i 's|^INSTALL_COMPLETE=.*|INSTALL_COMPLETE="true"|' "$CONFIG_FILE"
+    else
+        echo 'INSTALL_COMPLETE="true"' >> "$CONFIG_FILE"
+    fi
+
+    log_action "Kurulum klonlama adımından devam ettirildi. Proje: ${APP_NAME}" "SUCCESS"
+
+    show_final_report
+
+    local elapsed
+    elapsed=$(elapsed_time "$start_time")
+    echo -e "  ${GRAY}Toplam süre: ${elapsed}${NC}"
+    echo ""
+}
+
 # Script'i çalıştır
-main "$@"
+if [[ "${1:-}" == "--resume-from-clone" ]]; then
+    check_root
+    resume_from_clone
+else
+    main "$@"
+fi
