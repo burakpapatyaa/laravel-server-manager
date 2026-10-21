@@ -269,11 +269,12 @@ read_secret() {
     local result=""
 
     while true; do
-        echo -ne "  ${CYAN}${prompt}${NC}: "
+        echo -ne "  ${CYAN}${prompt}${NC} ${GRAY}[Girdi gizlenir]${NC}: "
         read -rs result
         echo ""
 
         if [[ -n "$result" ]]; then
+            echo -e "  ${GREEN}[✓] Alındı — ${#result} karakter girişi kabul edildi.${NC}"
             eval "$var_name='$result'"
             return 0
         else
@@ -375,9 +376,95 @@ load_config() {
 # Config dosyasının varlığını kontrol et
 check_config() {
     if [[ ! -f "$CONFIG_FILE" ]]; then
+        # configs/ altında herhangi bir proje var mı?
+        if [[ -d "$CONFIGS_DIR" ]] && ls "${CONFIGS_DIR}"/*.sh &>/dev/null 2>&1; then
+            # Proje var ama aktif değil — ilkini seç
+            local first
+            first=$(ls "${CONFIGS_DIR}"/*.sh | head -1)
+            local name
+            name=$(basename "$first" .sh)
+            echo "$name" > "$ACTIVE_PROJECT_FILE"
+            CONFIG_FILE="$first"
+            return 0
+        fi
         return 1
     fi
     return 0
+}
+
+# Mevcut projeleri listele
+list_projects() {
+    local projects=()
+    if [[ -d "$CONFIGS_DIR" ]]; then
+        for f in "${CONFIGS_DIR}"/*.sh; do
+            [[ -f "$f" ]] && projects+=("$(basename "$f" .sh)")
+        done
+    fi
+    # Geriye dönük uyumluluk: eski config.sh
+    if [[ -f "${SCRIPT_DIR}/config.sh" ]]; then
+        projects+=("default (config.sh)")
+    fi
+    echo "${projects[@]}"
+}
+
+# Proje değiştir
+switch_project() {
+    local projects=()
+    if [[ -d "$CONFIGS_DIR" ]]; then
+        for f in "${CONFIGS_DIR}"/*.sh; do
+            [[ -f "$f" ]] && projects+=("$(basename "$f" .sh)")
+        done
+    fi
+    if [[ -f "${SCRIPT_DIR}/config.sh" ]]; then
+        projects+=("__legacy__")
+    fi
+
+    if [[ ${#projects[@]} -eq 0 ]]; then
+        print_warning "Hiç proje bulunamadı. Önce kurulum yapın."
+        return 1
+    fi
+
+    local active_proj=""
+    [[ -f "$ACTIVE_PROJECT_FILE" ]] && active_proj="$(cat "$ACTIVE_PROJECT_FILE" | tr -d '[:space:]')"
+
+    print_header "🔄 Proje Değiştir"
+    echo -e "  ${GRAY}Mevcut projeler:${NC}"
+    echo ""
+    local i=1
+    for p in "${projects[@]}"; do
+        local marker=""
+        if [[ "$p" == "$active_proj" ]] || [[ "$p" == "__legacy__" && -z "$active_proj" ]]; then
+            marker=" ${GREEN}← aktif${NC}"
+        fi
+        local display_name="$p"
+        [[ "$p" == "__legacy__" ]] && display_name="default (config.sh)"
+        echo -e "  ${CYAN}${i})${NC}  ${display_name}${marker}"
+        (( i++ ))
+    done
+    echo ""
+
+    local choice
+    read -rp "  Proje numarası seçin: " choice
+
+    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#projects[@]} )); then
+        local selected="${projects[$((choice-1))]}"
+        if [[ "$selected" == "__legacy__" ]]; then
+            # Eski config.sh
+            rm -f "$ACTIVE_PROJECT_FILE"
+            CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+            print_success "Proje değiştirildi: default (config.sh)"
+        else
+            echo "$selected" > "$ACTIVE_PROJECT_FILE"
+            CONFIG_FILE="${CONFIGS_DIR}/${selected}.sh"
+            print_success "Proje değiştirildi: ${selected}"
+        fi
+        # Yeni config'i yükle
+        source "$CONFIG_FILE"
+        return 0
+    else
+        print_warning "Geçersiz seçim."
+        return 1
+    fi
 }
 
 # Config değerini güncelle

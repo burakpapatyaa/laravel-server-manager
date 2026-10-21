@@ -25,6 +25,19 @@ fi
 # Config yükle
 load_config
 
+# Kurulumun tamamlanıp tamamlanmadığını kontrol et
+if [[ "${INSTALL_COMPLETE:-false}" != "true" ]]; then
+    echo ""
+    print_error "Kurulum yarıda kesilmiş veya henüz tamamlanmamış!"
+    print_warning "Config dosyası oluşturulmuş ama kurulum başarıyla bitmemiş."
+    print_info "Kurulumu tamamlamak için: sudo bash ${SCRIPT_DIR}/install.sh"
+    echo ""
+    if ! confirm_action "Yine de menüyü açmak istiyor musunuz? (Önerilmez)"; then
+        exit 0
+    fi
+    echo ""
+fi
+
 # Error trap
 enable_error_trap
 

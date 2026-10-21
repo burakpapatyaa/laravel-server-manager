@@ -151,25 +151,16 @@ collect_information() {
     print_info "Bu değerler PHP ini ve Nginx için uygulanır. Enter ile varsayılanı kabul edebilirsiniz."
     echo ""
 
-    echo -e "  ${CYAN}Maksimum dosya yükleme boyutu (upload_max_filesize / client_max_body_size):${NC}"
     echo -e "  ${GRAY}Örn: 50M, 100M, 200M${NC}"
-    echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[100M]${NC}: "
-    read -r upload_input
-    UPLOAD_MAX_SIZE="${upload_input:-100M}"
+    read_required "Maksimum dosya yükleme boyutu (upload_max_filesize / client_max_body_size)" UPLOAD_MAX_SIZE "100M"
 
     echo ""
-    echo -e "  ${CYAN}PHP bellek limiti (memory_limit):${NC}"
     echo -e "  ${GRAY}Örn: 256M, 512M, 1G${NC}"
-    echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[512M]${NC}: "
-    read -r memory_input
-    PHP_MEMORY_LIMIT="${memory_input:-512M}"
+    read_required "PHP bellek limiti (memory_limit)" PHP_MEMORY_LIMIT "512M"
 
     echo ""
-    echo -e "  ${CYAN}Maksimum çalışma süresi / timeout (max_execution_time / fastcgi_read_timeout):${NC}"
     echo -e "  ${GRAY}Saniye cinsinden. Örn: 120, 300, 600${NC}"
-    echo -ne "  ${CYAN}Seçiminiz${NC} ${GRAY}[300]${NC}: "
-    read -r timeout_input
-    MAX_EXECUTION_TIME="${timeout_input:-300}"
+    read_required "Maksimum çalışma süresi / timeout (max_execution_time / fastcgi_read_timeout)" MAX_EXECUTION_TIME "300"
 
     # Yedekleme dizini
     BACKUP_DIR="/var/backups/laravel-manager"
@@ -270,6 +261,7 @@ QUEUE_CONNECTION="database"
 # ── Genel ──
 DEPLOY_TIMESTAMP=""
 LSM_INSTALLED_AT="$(date '+%Y-%m-%d %H:%M:%S')"
+INSTALL_COMPLETE="false"
 CONF
 
     chmod 600 "$CONFIG_FILE"
@@ -315,7 +307,7 @@ install_php() {
         "php${PHP_VERSION}-opcache"
     )
 
-    try_run "PHP ${PHP_VERSION} ve eklentileri kuruluyor" "apt-get install -y ${php_packages[*]}"
+    try_run "PHP ${PHP_VERSION} ve eklentileri kuruluyor" "DEBIAN_FRONTEND=noninteractive apt-get install -y ${php_packages[*]}"
 
     # PHP-FPM'i başlat
     try_run "PHP-FPM başlatılıyor" "systemctl enable php${PHP_VERSION}-fpm && systemctl start php${PHP_VERSION}-fpm"
@@ -545,7 +537,7 @@ SUPERVISOR
 install_certbot() {
     print_header "🔒 Certbot Kuruluyor"
 
-    try_run "Certbot kuruluyor" "apt-get install -y certbot python3-certbot-nginx"
+    try_run "Certbot kuruluyor" "DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-nginx"
     print_success "Certbot kuruldu. SSL sertifikası almak için: bash scripts/setup-ssl.sh"
 }
 
@@ -553,7 +545,7 @@ install_certbot() {
 configure_firewall() {
     print_header "🛡️ Güvenlik Duvarı Yapılandırılıyor"
 
-    try_run "UFW kuruluyor" "apt-get install -y ufw"
+    try_run "UFW kuruluyor" "DEBIAN_FRONTEND=noninteractive apt-get install -y ufw"
     try_run "SSH izni veriliyor" "ufw allow OpenSSH"
     try_run "Nginx HTTP/HTTPS izni veriliyor" "ufw allow 'Nginx Full'"
     try_run "MySQL izni veriliyor (sadece localhost)" "ufw allow from 127.0.0.1 to any port 3306"
@@ -573,7 +565,7 @@ clone_repository() {
     # Repo URL oluştur
     local repo_url
     if [[ "$REPO_VISIBILITY" == "private" && -n "$GITHUB_TOKEN" ]]; then
-        repo_url="https://${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
+        repo_url="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
         print_info "Private repo klonlanıyor (token ile)..."
     else
         repo_url="https://github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
@@ -585,15 +577,33 @@ clone_repository() {
         if [[ -d "${APP_DIR}/.git" ]]; then
             print_warning "Proje dizini zaten mevcut. Güncelleniyor..."
             cd "$APP_DIR"
-            git pull origin "$GITHUB_BRANCH" 2>/dev/null || true
+            if ! git pull origin "$GITHUB_BRANCH" 2>&1; then
+                print_error "git pull başarısız oldu! Lütfen repo erişimini ve token'ı kontrol edin."
+                exit 1
+            fi
             cd - > /dev/null
         else
             print_warning "Dizin mevcut ama Git repo değil. Temizlenip yeniden klonlanıyor..."
             rm -rf "$APP_DIR"
-            git clone -b "$GITHUB_BRANCH" "$repo_url" "$APP_DIR"
+            if ! git clone -b "$GITHUB_BRANCH" "$repo_url" "$APP_DIR" 2>&1; then
+                print_error "git clone başarısız oldu! URL, token veya repo adını kontrol edin."
+                exit 1
+            fi
         fi
     else
-        try_run_verbose "Repo klonlanıyor" "git clone -b ${GITHUB_BRANCH} ${repo_url} ${APP_DIR}"
+        print_step "Repo klonlanıyor..."
+        if ! git clone -b "$GITHUB_BRANCH" "$repo_url" "$APP_DIR" 2>&1; then
+            print_error "git clone başarısız oldu! URL, token veya repo adını kontrol edin."
+            exit 1
+        fi
+    fi
+
+    # Klonlama sonrası doğrulama
+    if [[ ! -d "${APP_DIR}/.git" ]]; then
+        print_error "Klonlama tamamlandı görünse de .git dizini bulunamadı: ${APP_DIR}"
+        print_info "Dizin içeriği:"
+        ls -la "$APP_DIR" 2>/dev/null || echo "  Dizin boş veya erişilemiyor."
+        exit 1
     fi
 
     print_success "Proje başarıyla klonlandı: ${APP_DIR}"
@@ -825,6 +835,13 @@ main() {
 
     # Logs dizinini oluştur
     mkdir -p "${SCRIPT_DIR}/../logs"
+
+    # Kurulumu tamamlandı olarak işaretle
+    if grep -q "^INSTALL_COMPLETE=" "$CONFIG_FILE" 2>/dev/null; then
+        sed -i 's|^INSTALL_COMPLETE=.*|INSTALL_COMPLETE="true"|' "$CONFIG_FILE"
+    else
+        echo 'INSTALL_COMPLETE="true"' >> "$CONFIG_FILE"
+    fi
 
     # Log kaydet
     log_action "İlk kurulum tamamlandı. Proje: ${APP_NAME}, PHP: ${PHP_VERSION}" "SUCCESS"
