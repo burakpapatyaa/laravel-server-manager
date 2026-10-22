@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # ============================================================================
 # Laravel Server Manager — Queue Worker Yönetimi (fix-queue.sh)
 # ============================================================================
@@ -142,7 +142,11 @@ main() {
 
                 local supervisor_conf="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
                 if [[ -f "$supervisor_conf" ]]; then
-                    sed -i "s/--queue=[^ ]*/--queue=${new_queues}/" "$supervisor_conf"
+                    if grep -q -- "--queue=" "$supervisor_conf"; then
+                        sed -i "s/--queue=[^ ]*/--queue=${new_queues}/" "$supervisor_conf"
+                    else
+                        sed -i "/^command=.*queue:work/s/$/ --queue=${new_queues}/" "$supervisor_conf"
+                    fi
                     try_run "Supervisor yeniden yükleniyor" "supervisorctl reread && supervisorctl update"
                     try_run "Worker'lar yeniden başlatılıyor" "supervisorctl restart ${APP_NAME}-worker:*"
                     print_success "Queue listesi '${new_queues}' olarak güncellendi."
