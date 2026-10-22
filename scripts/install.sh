@@ -176,6 +176,13 @@ collect_information() {
 
     # Yedekleme dizini
     BACKUP_DIR="/var/backups/laravel-manager"
+
+    # Queue listesi
+    print_header "👷 Queue Worker Ayarları"
+    print_info "Uygulamanızın kullandığı kuyruk isimleri. Öncelik sırasına göre virgülle yazın."
+    print_info "Varsayılan: default  |  Örnek: analysis,embedding,default"
+    echo ""
+    read_required "Dinlenecek queue listesi" QUEUE_NAMES "default"
 }
 
 # Özet göster ve onay al
@@ -201,6 +208,7 @@ show_summary() {
     print_table_row "Memory Limiti:" "$PHP_MEMORY_LIMIT" "$WHITE"
     print_table_row "Timeout:" "${MAX_EXECUTION_TIME}s" "$WHITE"
     print_table_row "Redis:" "$([[ "${INSTALL_REDIS:-false}" == "true" ]] && echo "Kurulacak ✅" || echo "Atlanacak")" "$WHITE"
+    print_table_row "Queue Listesi:" "${QUEUE_NAMES:-default}" "$WHITE"
     print_separator
 
     echo ""
@@ -270,6 +278,9 @@ BACKUP_RETENTION_DAYS="30"
 # ── Supervisor ──
 SUPERVISOR_WORKERS="3"
 QUEUE_CONNECTION="database"
+# Dinlenecek kuyruklar (öncelik sırasına göre, virgülle ayırın)
+# Örn: "analysis,embedding,default" veya sadece "default"
+QUEUE_NAMES="${QUEUE_NAMES:-default}"
 
 # ── Redis ──
 INSTALL_REDIS="${INSTALL_REDIS:-false}"
@@ -560,7 +571,7 @@ configure_supervisor_worker() {
     cat > "$supervisor_conf" << SUPERVISOR
 [program:${APP_NAME}-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php ${APP_DIR}/artisan queue:work ${QUEUE_CONNECTION:-database} --sleep=3 --tries=3 --max-time=3600
+command=php ${APP_DIR}/artisan queue:work ${QUEUE_CONNECTION:-database} --queue=${QUEUE_NAMES:-default} --sleep=3 --tries=3 --max-time=3600
 autostart=true
 autorestart=true
 stopasgroup=true

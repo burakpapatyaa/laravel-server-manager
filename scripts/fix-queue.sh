@@ -51,6 +51,7 @@ main() {
         echo -e "  ${WHITE}6)${NC} Worker sayısını değiştir"
         echo -e "  ${WHITE}7)${NC} Supervisor konfigürasyonunu yenile"
         echo -e "  ${WHITE}8)${NC} Queue restart sinyali gönder"
+        echo -e "  ${WHITE}9)${NC} Dinlenecek queue listesini değiştir"
         echo -e "  ${WHITE}0)${NC} ← Geri Dön"
 
         local choice
@@ -131,6 +132,24 @@ main() {
                 ;;
             8)
                 try_run "Queue restart sinyali gönderiliyor" "php ${APP_DIR}/artisan queue:restart"
+                ;;
+            9)
+                local current_queues="${QUEUE_NAMES:-default}"
+                print_info "Mevcut queue listesi: ${current_queues}"
+                print_info "Virgülle ayırın, öncelik sırasına göre yazın. Örn: analysis,embedding,default"
+                read_required "Yeni queue listesi" new_queues "$current_queues"
+                update_config_value "QUEUE_NAMES" "$new_queues"
+
+                local supervisor_conf="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
+                if [[ -f "$supervisor_conf" ]]; then
+                    sed -i "s/--queue=[^ ]*/--queue=${new_queues}/" "$supervisor_conf"
+                    try_run "Supervisor yeniden yükleniyor" "supervisorctl reread && supervisorctl update"
+                    try_run "Worker'lar yeniden başlatılıyor" "supervisorctl restart ${APP_NAME}-worker:*"
+                    print_success "Queue listesi '${new_queues}' olarak güncellendi."
+                else
+                    print_warning "Supervisor config bulunamadı: ${supervisor_conf}"
+                    print_info "Config.sh güncellendi, manuel olarak supervisor config'ini düzenleyin."
+                fi
                 ;;
             *)
                 print_warning "Geçersiz seçim!"

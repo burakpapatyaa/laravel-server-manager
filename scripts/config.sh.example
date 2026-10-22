@@ -39,6 +39,10 @@ BACKUP_RETENTION_DAYS="30"
 # ── Supervisor ──
 SUPERVISOR_WORKERS="3"
 QUEUE_CONNECTION="database"
+# Dinlenecek kuyruklar (öncelik sırasına göre, virgülle ayırın)
+# Örn: "analysis,embedding,default" veya sadece "default"
+# Yeni kuyruk eklenince burası güncellenir → supervisorctl update yeterli
+QUEUE_NAMES="default"
 
 # ── Genel ──
 DEPLOY_TIMESTAMP=""
