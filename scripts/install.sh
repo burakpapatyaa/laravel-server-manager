@@ -162,6 +162,18 @@ collect_information() {
     echo -e "  ${GRAY}Saniye cinsinden. Örn: 120, 300, 600${NC}"
     read_required "Maksimum çalışma süresi / timeout (max_execution_time / fastcgi_read_timeout)" MAX_EXECUTION_TIME "300"
 
+    # Redis kurulumu
+    print_header "🔴 Redis Kurulumu"
+    echo -e "  ${CYAN}Redis; session, cache ve queue için kullanılır.${NC}"
+    echo -e "  ${GRAY}Queue bağlantısı 'redis' seçilecekse kurulması önerilir.${NC}"
+    echo ""
+    if confirm_action "Redis kurulsun mu? (önerilir)" "e"; then
+        INSTALL_REDIS="true"
+    else
+        INSTALL_REDIS="false"
+        print_info "Redis kurulmayacak. Cache/session/queue için 'database' veya 'file' driver kullanılacak."
+    fi
+
     # Yedekleme dizini
     BACKUP_DIR="/var/backups/laravel-manager"
 }
@@ -188,6 +200,7 @@ show_summary() {
     print_table_row "Upload Limiti:" "$UPLOAD_MAX_SIZE" "$WHITE"
     print_table_row "Memory Limiti:" "$PHP_MEMORY_LIMIT" "$WHITE"
     print_table_row "Timeout:" "${MAX_EXECUTION_TIME}s" "$WHITE"
+    print_table_row "Redis:" "$([[ "${INSTALL_REDIS:-false}" == "true" ]] && echo "Kurulacak ✅" || echo "Atlanacak")" "$WHITE"
     print_separator
 
     echo ""
@@ -257,6 +270,9 @@ BACKUP_RETENTION_DAYS="30"
 # ── Supervisor ──
 SUPERVISOR_WORKERS="3"
 QUEUE_CONNECTION="database"
+
+# ── Redis ──
+INSTALL_REDIS="${INSTALL_REDIS:-false}"
 
 # ── Genel ──
 DEPLOY_TIMESTAMP=""
@@ -413,6 +429,38 @@ install_supervisor() {
     try_run "Supervisor kuruluyor" "apt-get install -y supervisor"
     try_run "Supervisor başlatılıyor" "systemctl enable supervisor && systemctl start supervisor"
     print_success "Supervisor servisi kuruldu."
+}
+
+# Redis kurulumu
+install_redis() {
+    print_header "🔴 Redis Kuruluyor"
+
+    # redis-server paketi
+    try_run "Redis Server kuruluyor" "DEBIAN_FRONTEND=noninteractive apt-get install -y redis-server"
+
+    # Redis'i her açılışta başlat
+    try_run "Redis başlatılıyor" "systemctl enable redis-server && systemctl start redis-server"
+
+    # PHP Redis extension
+    if dpkg -s "php${PHP_VERSION}-redis" > /dev/null 2>&1; then
+        print_info "php${PHP_VERSION}-redis zaten kurulu."
+    else
+        try_run "PHP Redis extension kuruluyor (php${PHP_VERSION}-redis)" \
+            "DEBIAN_FRONTEND=noninteractive apt-get install -y php${PHP_VERSION}-redis"
+    fi
+
+    # PHP-FPM'i yeniden başlat (extension aktif olsun)
+    systemctl is-active --quiet "php${PHP_VERSION}-fpm" 2>/dev/null && \
+        try_run "PHP-FPM yeniden başlatılıyor" "systemctl restart php${PHP_VERSION}-fpm" || true
+
+    # Redis bağlantı testi
+    if redis-cli ping 2>/dev/null | grep -q "PONG"; then
+        print_success "Redis bağlantı testi başarılı (PONG alındı)."
+    else
+        print_warning "Redis ping yanıt vermedi. Servis durumunu kontrol edin: systemctl status redis-server"
+    fi
+
+    print_success "Redis kurulumu tamamlandı."
 }
 
 # Laravel Nginx Vhost konfigürasyonu (Proje klonlandıktan sonra çağrılır)
@@ -820,6 +868,13 @@ main() {
     install_supervisor
     install_certbot
     configure_firewall
+
+    # Redis (isteğe bağlı)
+    if [[ "${INSTALL_REDIS:-false}" == "true" ]]; then
+        install_redis
+    else
+        print_info "Redis kurulumu atlandı."
+    fi
 
     # Klonlamadan önce GitHub bağlantısını test et
     print_header "🔗 GitHub Bağlantı Testi"
