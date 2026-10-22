@@ -238,6 +238,19 @@ retry_failed_jobs() {
 restart_workers() {
     print_subheader "Queue Worker Yeniden Başlatılıyor"
 
+    # Supervisor config'de --queue= parametresi doğru mu kontrol et
+    local supervisor_conf="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
+    if [[ -f "$supervisor_conf" && -n "${QUEUE_NAMES:-}" ]]; then
+        if grep -q -- "--queue=" "$supervisor_conf"; then
+            # Varsa güncelle
+            sed -i "s/--queue=[^ ]*/--queue=${QUEUE_NAMES}/" "$supervisor_conf"
+        else
+            # Yoksa command satırına ekle
+            sed -i "/^command=.*queue:work/s/$/ --queue=${QUEUE_NAMES}/" "$supervisor_conf"
+        fi
+        print_success "Supervisor config queue listesi güncellendi: ${QUEUE_NAMES}"
+    fi
+
     try_run "Queue yeniden başlatılıyor" "php ${APP_DIR}/artisan queue:restart"
 
     if command -v supervisorctl &> /dev/null; then
